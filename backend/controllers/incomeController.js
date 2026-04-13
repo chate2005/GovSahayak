@@ -474,7 +474,6 @@ exports.uploadDocuments = async (req, res) => {
 
     app.eligibility_checked = true;
 
-    // Always set extracted_income before saving
     if (annualIncome !== null) {
       app.extracted_income = annualIncome;
     }
@@ -489,6 +488,30 @@ exports.uploadDocuments = async (req, res) => {
         message: "Could not verify income automatically. Sent to officer for review.",
         status: "sent_to_officer",
         extracted_income: null
+      });
+    }
+
+    const enteredStr = app.entered_income || "";
+    const enteredMatch = enteredStr.match(/\d+/g);
+    const enteredIncomeNumber = enteredMatch ? Number(enteredMatch.join("")) : null;
+
+    let isIncomeMatched = false;
+    if (enteredIncomeNumber !== null && annualIncome !== null) {
+      if (enteredIncomeNumber >= 0.95 * annualIncome && enteredIncomeNumber <= 1.05 * annualIncome) {
+        isIncomeMatched = true;
+      }
+    }
+
+    if (!isIncomeMatched) {
+      app.status = "sent_to_officer";
+      app.auto_decision = "sent_to_officer";
+      app.officer_note = `Income mismatch: User entered ${enteredIncomeNumber}, document shows ${annualIncome}. Range expected: ${Math.floor(0.95 * annualIncome)} to ${Math.floor(1.05 * annualIncome)}.`;
+      await app.save();
+
+      return res.json({
+        message: "Your entered income does not match the uploaded document accurately enough. Sent to officer for manual review.",
+        status: "sent_to_officer",
+        extracted_income: annualIncome
       });
     }
 

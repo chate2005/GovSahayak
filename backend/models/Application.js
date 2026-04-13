@@ -6,15 +6,18 @@ const ApplicationSchema = new mongoose.Schema(
     service_type: String,
     status: {
       type: String,
-      default: "waiting_for_documents"
+      default: "waiting_for_name"
     },
+    name_from_chat: String,
+    mobile_from_chat: String,
+    entered_income: String,
     extracted_income: Number,
     eligibility_checked: { type: Boolean, default: false },
     auto_decision: String,
     officer_note: String,
-    aadhaar_number: String,          // ← store aadhaar for duplicate check
-    financial_year: String,          // ← e.g. "2025-2026"
-    certificate_url: String          // ← PDF download URL
+    aadhaar_number: String,
+    financial_year: String,
+    certificate_url: String
   },
   { timestamps: true }
 );

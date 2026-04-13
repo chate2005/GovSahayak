@@ -21,6 +21,48 @@ exports.chat = async (req, res) => {
       return res.status(400).json({ reply: "Please login again." });
     }
 
+    const currentFY = getFinancialYear();
+    const pending = await Application.findOne({
+      user_id,
+      service_type: "income_certificate",
+      status: {
+        $in: ["waiting_for_name", "waiting_for_mobile", "waiting_for_income", "waiting_for_documents", "pending", "sent_to_officer"]
+      },
+      financial_year: currentFY
+    });
+
+    if (pending) {
+      if (pending.status === "waiting_for_name") {
+          pending.name_from_chat = message;
+          pending.status = "waiting_for_mobile";
+          await pending.save();
+          return res.json({ reply: "Thank you. Please enter your Mobile Number." });
+      }
+      if (pending.status === "waiting_for_mobile") {
+          pending.mobile_from_chat = message;
+          pending.status = "waiting_for_income";
+          await pending.save();
+          return res.json({ reply: "Thank you. Please enter your annual Income." });
+      }
+      if (pending.status === "waiting_for_income") {
+          pending.entered_income = message;
+          pending.status = "waiting_for_documents";
+          await pending.save();
+          return res.json({ 
+              reply: "I'll help you get your income certificate. Please upload your Aadhaar card and income proof.",
+              application_id: pending._id.toString(),
+              show_upload_button: true
+          });
+      }
+      
+      const responseData = {
+        reply: `You already have a pending application for financial year ${currentFY}. Please upload your documents to proceed.`,
+        application_id: pending._id.toString(),
+        show_upload_button: true
+      };
+      return res.json(responseData);
+    }
+
     const completion = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       temperature: 0,
@@ -55,9 +97,6 @@ Return: {"intent":"intent_name"}`
     }
 
     if (intent === "apply_income_certificate") {
-      const currentFY = getFinancialYear();
-      console.log("Current FY:", currentFY);
-
       const approved = await Application.findOne({
         user_id,
         service_type: "income_certificate",
@@ -65,55 +104,27 @@ Return: {"intent":"intent_name"}`
         financial_year: currentFY
       });
 
-      console.log("Existing approved:", approved ? approved._id.toString() : "none");
-
       if (approved) {
-        const responseData = {
+        return res.json({
           reply: `You already have an approved income certificate for financial year ${currentFY}. You can download it from My Applications tab.`,
           application_id: approved._id.toString(),
           certificate_url: approved.certificate_url || null,
           already_approved: true
-        };
-        console.log("Sending approved response:", JSON.stringify(responseData));
-        return res.json(responseData);
-      }
-
-      const pending = await Application.findOne({
-        user_id,
-        service_type: "income_certificate",
-        status: {
-          $in: ["waiting_for_documents", "pending", "sent_to_officer"]
-        },
-        financial_year: currentFY
-      });
-
-      console.log("Existing pending:", pending ? pending._id.toString() : "none");
-
-      if (pending) {
-        const responseData = {
-          reply: `You already have a pending application for financial year ${currentFY}. Please upload your documents to proceed.`,
-          application_id: pending._id.toString(),
-          show_upload_button: true
-        };
-        console.log("Sending pending response:", JSON.stringify(responseData));
-        return res.json(responseData);
+        });
       }
 
       const app = await Application.create({
         user_id,
         service_type: "income_certificate",
-        status: "waiting_for_documents",
+        status: "waiting_for_name",
         financial_year: currentFY
       });
 
-      console.log("Application created:", app._id.toString(), "FY:", currentFY);
-
       const responseData = {
-        reply: "I'll help you get your income certificate. Please upload your Aadhaar card and income proof.",
+        reply: "Please enter your Name.",
         application_id: app._id.toString(),
-        show_upload_button: true
+        show_upload_button: false
       };
-      console.log("Sending new app response:", JSON.stringify(responseData));
       return res.json(responseData);
     }
 
