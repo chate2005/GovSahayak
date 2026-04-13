@@ -1,0 +1,37 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@getbrevo/brevo": "^5.0.1",
+    "@google/generative-ai": "^0.24.1",
+    "@sendgrid/mail": "^8.1.6",
+    "axios": "^1.13.6",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^1.41.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "groq-sdk": "^0.37.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.3.1",
+    "multer": "^2.1.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "nodemon": "^3.1.14",
+    "openai": "^6.26.0",
+    "pdfkit": "^0.18.0",
+    "pg": "^8.19.0",
+    "sib-api-v3-sdk": "^8.5.0",
+    "tesseract.js": "^7.0.0"
+  }
+}
