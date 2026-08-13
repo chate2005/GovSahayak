@@ -10,6 +10,8 @@ const incomeRoutes = require("./routes/incomeRoutes");
 const officerRoutes = require("./routes/officerRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 const otpRoutes = require("./routes/otpRoutes");
+const birthRoutes = require("./routes/birthRoutes");
+const domicileRoutes = require("./routes/domicileRoutes");
 
 const app = express();
 
@@ -20,6 +22,8 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/income", incomeRoutes);
+app.use("/api/birth", birthRoutes);
+app.use("/api/domicile", domicileRoutes);
 app.use("/api/officer", officerRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/otp", otpRoutes);

@@ -42,31 +42,72 @@ async function generateCertificate(app, userName) {
       readable.pipe(stream);
     });
 
-    doc.rect(30, 30, doc.page.width - 60, doc.page.height - 60).stroke();
-    doc.fontSize(22).font("Helvetica-Bold").text("GOVERNMENT OF INDIA", { align: "center" });
-    doc.fontSize(16).font("Helvetica").text("Income Certificate", { align: "center" });
-    doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
+    if (app.service_type === "domicile_certificate") {
+      // Domicile Certificate PDF
+      const certId = `DC-${app._id.toString().toUpperCase().slice(-8)}-${new Date().getFullYear()}`;
+      const fullAddress = [app.dc_house_no, app.dc_street, app.dc_city, app.dc_district, app.dc_state, app.dc_pin].filter(Boolean).join(", ");
+
+      doc.rect(30, 30, doc.page.width - 60, doc.page.height - 60).stroke();
+      doc.fontSize(22).font("Helvetica-Bold").text("GOVERNMENT OF INDIA", { align: "center" });
+      doc.fontSize(16).font("Helvetica").text("Domicile Certificate", { align: "center" });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
+      doc.moveDown(1);
+      doc.fontSize(13).font("Helvetica-Bold").text("CERTIFICATE OF DOMICILE / RESIDENCE");
+      doc.moveDown(0.5);
+      doc.fontSize(11).font("Helvetica").text("This is to certify that:");
+      doc.moveDown(0.5);
+      doc.fontSize(12).font("Helvetica-Bold").text("Name: ", { continued: true }).font("Helvetica").text(app.dc_full_name || userName || "-");
+      doc.fontSize(12).font("Helvetica-Bold").text("Aadhaar (Last 4): ", { continued: true }).font("Helvetica").text(app.dc_aadhaar_last4 || "-");
+      doc.fontSize(12).font("Helvetica-Bold").text("Date of Birth: ", { continued: true }).font("Helvetica").text(app.dc_dob || "-");
+      doc.moveDown(0.5);
+      doc.fontSize(12).font("Helvetica-Bold").text("Permanent Address:");
+      doc.fontSize(12).font("Helvetica").text(fullAddress || "-");
+      doc.moveDown(0.5);
+      doc.fontSize(12).font("Helvetica-Bold").text("Duration of Residence: ", { continued: true }).font("Helvetica").text(`${app.dc_duration_years || "-"} years`);
+      doc.fontSize(12).font("Helvetica-Bold").text("Purpose: ", { continued: true }).font("Helvetica").text(app.dc_purpose || "-");
+      doc.fontSize(12).font("Helvetica-Bold").text("State of Domicile: ", { continued: true }).font("Helvetica").text(app.dc_state || "-");
+      doc.moveDown(0.5);
+      doc.fontSize(12).font("Helvetica-Bold").text("Certificate ID: ", { continued: true }).font("Helvetica").text(certId);
+      doc.fontSize(12).font("Helvetica-Bold").text("Application ID: ", { continued: true }).font("Helvetica").text(app._id.toString());
+      doc.fontSize(12).font("Helvetica-Bold").text("Issue Date: ", { continued: true }).font("Helvetica").text(new Date().toLocaleDateString("en-IN"));
+      doc.moveDown(1);
+      doc.fontSize(9).font("Helvetica").fillColor("grey").text(`QR Verification: DOMICILE-${certId}`, { align: "center" });
+      doc.fillColor("black").moveDown(0.5);
+      doc.fontSize(11).font("Helvetica").text(`This certificate confirms that the above-named individual is a domicile/resident of ${app.dc_state || "[State]"}. Approved by officer.`, { align: "justify" });
+      doc.moveDown(2);
+      doc.fontSize(12).font("Helvetica-Bold").text("Authorized Signatory", { align: "right" });
+      doc.fontSize(11).font("Helvetica").text("Senate Bot — Government Services", { align: "right" });
+      doc.fontSize(9).font("Helvetica").fillColor("grey").text(`Certificate generated on ${new Date().toISOString()}`, { align: "center" });
+    } else {
+      // Income / Birth / generic certificate PDF
+      doc.rect(30, 30, doc.page.width - 60, doc.page.height - 60).stroke();
+      doc.fontSize(22).font("Helvetica-Bold").text("GOVERNMENT OF INDIA", { align: "center" });
+      doc.fontSize(16).font("Helvetica").text("Income Certificate", { align: "center" });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
 doc.moveDown(0.5);
-    doc.moveDown(1);
-    doc.fontSize(13).font("Helvetica-Bold").text("CERTIFICATE OF INCOME");
-    doc.moveDown(0.5);
-    doc.fontSize(11).font("Helvetica").text("This is to certify that:");
-    doc.moveDown(0.5);
-    doc.fontSize(12).font("Helvetica-Bold").text("Name: ", { continued: true }).font("Helvetica").text(userName || "Applicant");
-    doc.fontSize(12).font("Helvetica-Bold").text("Application ID: ", { continued: true }).font("Helvetica").text(app._id.toString());
-    if (app.aadhaar_number) {
-      doc.fontSize(12).font("Helvetica-Bold").text("Aadhaar No: ", { continued: true }).font("Helvetica").text(app.aadhaar_number);
+      doc.moveDown(1);
+      doc.fontSize(13).font("Helvetica-Bold").text("CERTIFICATE OF INCOME");
+      doc.moveDown(0.5);
+      doc.fontSize(11).font("Helvetica").text("This is to certify that:");
+      doc.moveDown(0.5);
+      doc.fontSize(12).font("Helvetica-Bold").text("Name: ", { continued: true }).font("Helvetica").text(userName || "Applicant");
+      doc.fontSize(12).font("Helvetica-Bold").text("Application ID: ", { continued: true }).font("Helvetica").text(app._id.toString());
+      if (app.aadhaar_number) {
+        doc.fontSize(12).font("Helvetica-Bold").text("Aadhaar No: ", { continued: true }).font("Helvetica").text(app.aadhaar_number);
+      }
+      doc.fontSize(12).font("Helvetica-Bold").text("Annual Income: ", { continued: true }).font("Helvetica").text(`Rs. ${app.extracted_income?.toLocaleString("en-IN") || "As verified by officer"}`);
+      doc.fontSize(12).font("Helvetica-Bold").text("Financial Year: ", { continued: true }).font("Helvetica").text(app.financial_year || getFinancialYear());
+      doc.fontSize(12).font("Helvetica-Bold").text("Status: ", { continued: true }).font("Helvetica").text("APPROVED");
+      doc.fontSize(12).font("Helvetica-Bold").text("Issue Date: ", { continued: true }).font("Helvetica").text(new Date().toLocaleDateString("en-IN"));
+      doc.moveDown(1);
+      doc.fontSize(11).font("Helvetica").text("This certificate is issued based on documents submitted and verified by officer.", { align: "justify" });
+      doc.moveDown(2);
+      doc.fontSize(12).font("Helvetica-Bold").text("Authorized Signatory", { align: "right" });
+      doc.fontSize(11).font("Helvetica").text("Senate Bot — Government Services", { align: "right" });
     }
-    doc.fontSize(12).font("Helvetica-Bold").text("Annual Income: ", { continued: true }).font("Helvetica").text(`Rs. ${app.extracted_income?.toLocaleString("en-IN") || "As verified by officer"}`);
-    doc.fontSize(12).font("Helvetica-Bold").text("Financial Year: ", { continued: true }).font("Helvetica").text(app.financial_year || getFinancialYear());
-    doc.fontSize(12).font("Helvetica-Bold").text("Status: ", { continued: true }).font("Helvetica").text("APPROVED");
-    doc.fontSize(12).font("Helvetica-Bold").text("Issue Date: ", { continued: true }).font("Helvetica").text(new Date().toLocaleDateString("en-IN"));
-    doc.moveDown(1);
-    doc.fontSize(11).font("Helvetica").text("This certificate is issued based on documents submitted and verified by officer.", { align: "justify" });
-    doc.moveDown(2);
-    doc.fontSize(12).font("Helvetica-Bold").text("Authorized Signatory", { align: "right" });
-    doc.fontSize(11).font("Helvetica").text("Senate Bot — Government Services", { align: "right" });
+
     doc.end();
   });
 }
@@ -90,6 +131,39 @@ exports.getPendingApplications = async (req, res) => {
         financial_year: app.financial_year,
         extracted_income: app.extracted_income,
         aadhaar_number: app.aadhaar_number,
+        child_name: app.child_name,
+        dob: app.dob,
+        place_of_birth: app.place_of_birth,
+        father_name: app.father_name,
+        mother_name: app.mother_name,
+        bc_mobile: app.bc_mobile,
+        bc_flags: app.bc_flags,
+        bc_confidence_score: app.bc_confidence_score,
+        bc_risk_level: app.bc_risk_level,
+        bc_parent_detected: app.bc_parent_detected,
+        bc_birth_proof_ocr: app.bc_birth_proof_ocr,
+        bc_aadhaar_ocr: app.bc_aadhaar_ocr,
+        // Domicile Certificate fields
+        dc_full_name: app.dc_full_name,
+        dc_mobile: app.dc_mobile,
+        dc_aadhaar_last4: app.dc_aadhaar_last4,
+        dc_dob: app.dc_dob,
+        dc_house_no: app.dc_house_no,
+        dc_street: app.dc_street,
+        dc_city: app.dc_city,
+        dc_district: app.dc_district,
+        dc_state: app.dc_state,
+        dc_pin: app.dc_pin,
+        dc_duration_years: app.dc_duration_years,
+        dc_purpose: app.dc_purpose,
+        dc_flags: app.dc_flags,
+        dc_confidence_score: app.dc_confidence_score,
+        dc_risk_level: app.dc_risk_level,
+        dc_assigned_officer: app.dc_assigned_officer,
+        dc_jurisdiction_flag: app.dc_jurisdiction_flag,
+        dc_aadhaar_ocr: app.dc_aadhaar_ocr,
+        dc_address_proof_ocr: app.dc_address_proof_ocr,
+        dc_residency_proof_ocr: app.dc_residency_proof_ocr,
         officer_note: app.officer_note,
         auto_decision: app.auto_decision,
         certificate_url: app.certificate_url,
@@ -129,6 +203,39 @@ exports.getAllApplications = async (req, res) => {
         financial_year: app.financial_year,
         extracted_income: app.extracted_income,
         aadhaar_number: app.aadhaar_number,
+        child_name: app.child_name,
+        dob: app.dob,
+        place_of_birth: app.place_of_birth,
+        father_name: app.father_name,
+        mother_name: app.mother_name,
+        bc_mobile: app.bc_mobile,
+        bc_flags: app.bc_flags,
+        bc_confidence_score: app.bc_confidence_score,
+        bc_risk_level: app.bc_risk_level,
+        bc_parent_detected: app.bc_parent_detected,
+        bc_birth_proof_ocr: app.bc_birth_proof_ocr,
+        bc_aadhaar_ocr: app.bc_aadhaar_ocr,
+        // Domicile Certificate fields
+        dc_full_name: app.dc_full_name,
+        dc_mobile: app.dc_mobile,
+        dc_aadhaar_last4: app.dc_aadhaar_last4,
+        dc_dob: app.dc_dob,
+        dc_house_no: app.dc_house_no,
+        dc_street: app.dc_street,
+        dc_city: app.dc_city,
+        dc_district: app.dc_district,
+        dc_state: app.dc_state,
+        dc_pin: app.dc_pin,
+        dc_duration_years: app.dc_duration_years,
+        dc_purpose: app.dc_purpose,
+        dc_flags: app.dc_flags,
+        dc_confidence_score: app.dc_confidence_score,
+        dc_risk_level: app.dc_risk_level,
+        dc_assigned_officer: app.dc_assigned_officer,
+        dc_jurisdiction_flag: app.dc_jurisdiction_flag,
+        dc_aadhaar_ocr: app.dc_aadhaar_ocr,
+        dc_address_proof_ocr: app.dc_address_proof_ocr,
+        dc_residency_proof_ocr: app.dc_residency_proof_ocr,
         officer_note: app.officer_note,
         auto_decision: app.auto_decision,
         certificate_url: app.certificate_url,

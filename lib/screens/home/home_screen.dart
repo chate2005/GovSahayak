@@ -4,6 +4,8 @@ import '../../models/chat_message.dart';
 import '../../services/chat_service.dart';
 import '../profile/profile_screen.dart';
 import '../upload/upload_screen.dart';
+import '../upload/birth_upload_screen.dart';
+import '../upload/domicile_upload_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -18,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<ChatMessage> _messages = [
     ChatMessage(
-      text: "Hello! I am the Senate Bot. I can help you apply for an income certificate. Just say 'I want income certificate'.",
+      text: "Hello! I am SenateBot. I can help you apply for an Income Certificate, Birth Certificate, or Domicile Certificate. Please tell me which certificate you need.",
       isUser: false,
     )
   ]; 
@@ -26,6 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isTyping = false;
   String? _pendingApplicationId;
   bool _showUploadButton = false;
+  bool _showBirthUploadButton = false;
+  bool _showDomicileUploadButton = false;
+  int _birthUploadStep = 1;
+  int _domicileUploadStep = 1;
   bool _showDownloadButton = false;
   String? _certificateUrl;
 
@@ -39,6 +45,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _messages.add(ChatMessage(text: userText, isUser: true));
       _isTyping = true;
       _showUploadButton = false;
+      _showBirthUploadButton = false;
+      _showDomicileUploadButton = false;
       _showDownloadButton = false;
       _certificateUrl = null;
     });
@@ -56,6 +64,27 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response["show_upload_button"] == true) {
         _pendingApplicationId = response["application_id"]?.toString();
         _showUploadButton = true;
+        _showBirthUploadButton = false;
+        _showDownloadButton = false;
+      }
+
+      // Show birth upload button
+      if (response["show_birth_upload_proof"] == true) {
+        _pendingApplicationId = response["application_id"]?.toString();
+        _birthUploadStep = response["birth_upload_step"] ?? 1;
+        _showUploadButton = false;
+        _showBirthUploadButton = true;
+        _showDomicileUploadButton = false;
+        _showDownloadButton = false;
+      }
+
+      // Show domicile upload button
+      if (response["show_domicile_upload"] == true) {
+        _pendingApplicationId = response["application_id"]?.toString();
+        _domicileUploadStep = response["domicile_upload_step"] ?? 1;
+        _showUploadButton = false;
+        _showBirthUploadButton = false;
+        _showDomicileUploadButton = true;
         _showDownloadButton = false;
       }
 
@@ -92,6 +121,40 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _goToBirthUpload() {
+    if (_pendingApplicationId == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            BirthUploadScreen(applicationId: _pendingApplicationId!, initialStep: _birthUploadStep),
+      ),
+    ).then((_) {
+      setState(() {
+        _showBirthUploadButton = false;
+        _pendingApplicationId = null;
+      });
+    });
+  }
+
+  void _goToDomicileUpload() {
+    if (_pendingApplicationId == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DomicileUploadScreen(
+          applicationId: _pendingApplicationId!,
+          initialStep: _domicileUploadStep,
+        ),
+      ),
+    ).then((_) {
+      setState(() {
+        _showDomicileUploadButton = false;
+        _pendingApplicationId = null;
+      });
+    });
+  }
+
   Future<void> _downloadCertificate() async {
     if (_certificateUrl == null) return;
     final uri = Uri.parse(_certificateUrl!);
@@ -120,11 +183,13 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _messages = [
         ChatMessage(
-          text: "Chat cleared. How can I help you?",
+          text: "Chat cleared. I can help you apply for an Income Certificate, Birth Certificate, or Domicile Certificate. Please tell me which certificate you need.",
           isUser: false,
         )
       ];
       _showUploadButton = false;
+      _showBirthUploadButton = false;
+      _showDomicileUploadButton = false;
       _showDownloadButton = false;
       _pendingApplicationId = null;
       _certificateUrl = null;
@@ -222,6 +287,62 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            
+          // ── Birth Certificate Upload button ──
+          if (_showBirthUploadButton)
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _goToBirthUpload,
+                  icon: const Icon(Icons.child_care, color: Colors.white),
+                  label: const Text(
+                    "Upload Birth Proof",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1976D2),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Domicile Certificate Upload button ──
+          if (_showDomicileUploadButton)
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _goToDomicileUpload,
+                  icon: const Icon(Icons.home_work, color: Colors.white),
+                  label: const Text(
+                    "Upload Domicile Documents",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4527A0),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
