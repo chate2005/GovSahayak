@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Applications — GovSahayak Portal</title>
+  <meta name="description" content="Track your certificate applications and download approved certificates."/>
+  <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/chatbot.css"/>
+  <style>
+    .app-card {
+      background: white; border-radius:12px; border:1px solid var(--gov-grey-200);
+      box-shadow: var(--shadow-sm); margin-bottom:16px; overflow:hidden;
+      transition: var(--transition-slow);
+    }
+    .app-card:hover { box-shadow: var(--shadow-md); }
+    .app-card-header {
+      padding: 14px 20px; background: var(--gov-grey-100);
+      border-bottom:1px solid var(--gov-grey-200);
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .app-card-type {
+      font-size:15px; font-weight:700; color:var(--gov-navy);
+      display:flex; align-items:center; gap:8px;
+    }
+    .app-card-body { padding:16px 20px; }
+    .app-detail-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px;
+    }
+    .app-detail-item { }
+    .app-detail-label { font-size:11px; color:var(--gov-grey-500); text-transform:uppercase; letter-spacing:.4px; margin-bottom:2px; }
+    .app-detail-value { font-size:14px; font-weight:600; color:var(--gov-grey-800); }
+    .app-card-footer {
+      padding:12px 20px; border-top:1px solid var(--gov-grey-100);
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    }
+    .empty-state {
+      text-align:center; padding:60px 20px;
+      background:white; border-radius:12px; border:1px solid var(--gov-grey-200);
+    }
+    .empty-icon { font-size:56px; margin-bottom:16px; }
+    .empty-title { font-size:18px; font-weight:700; color:var(--gov-grey-700); margin-bottom:8px; }
+    .empty-desc { font-size:14px; color:var(--gov-grey-500); }
+    .filter-bar {
+      display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; align-items:center;
+    }
+    .filter-btn {
+      padding:6px 14px; border-radius:20px; font-size:13px; font-weight:500;
+      border:1.5px solid var(--gov-grey-300); background:white; cursor:pointer;
+      transition:var(--transition); color:var(--gov-grey-600);
+    }
+    .filter-btn.active { background:var(--gov-navy); color:white; border-color:var(--gov-navy); }
+    .filter-btn:hover:not(.active) { border-color:var(--gov-navy); color:var(--gov-navy); }
+  </style>
+</head>
+<body>
+
+<script src="js/api.js"></script>
+<script src="js/layout.js"></script>
+<script>renderHeader('dashboard');</script>
+
+<div class="breadcrumb">
+  <div class="breadcrumb-inner">
+    <a href="index.html">Home</a>
+    <span>›</span>
+    <span>My Applications</span>
+  </div>
+</div>
+
+<main>
+  <div class="page-container">
+
+    <div class="d-flex align-center justify-between mb-lg flex-wrap gap-md">
+      <div>
+        <h1 class="section-title" style="margin-bottom:4px;">📁 My Applications</h1>
+        <p style="font-size:14px;color:var(--gov-grey-600);">Track and manage your certificate applications</p>
+      </div>
+      <a href="apply.html" class="btn btn-saffron">+ New Application</a>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-grid" id="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon blue">📋</div>
+        <div><div class="stat-num" id="stat-total">—</div><div class="stat-label">Total Applications</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div><div class="stat-num" id="stat-approved">—</div><div class="stat-label">Approved</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange">⏳</div>
+        <div><div class="stat-num" id="stat-pending">—</div><div class="stat-label">Under Review</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">❌</div>
+        <div><div class="stat-num" id="stat-rejected">—</div><div class="stat-label">Rejected</div></div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <span style="font-size:13px;font-weight:600;color:var(--gov-grey-600);">Filter:</span>
+      <button class="filter-btn active" onclick="filterApps('all', this)">All</button>
+      <button class="filter-btn" onclick="filterApps('approved', this)">Approved ✅</button>
+      <button class="filter-btn" onclick="filterApps('pending', this)">Pending ⏳</button>
+      <button class="filter-btn" onclick="filterApps('rejected', this)">Rejected ❌</button>
+    </div>
+
+    <!-- Applications List -->
+    <div id="apps-list">
+      <div class="spinner"></div>
+    </div>
+
+  </div>
+</main>
+
+<script>renderFooter();</script>
+<script src="js/chatbot.js"></script>
+<script>
+  if (!window.govUtils.requireAuth()) window.location.href = 'login.html';
+
+  const TYPE_ICONS = { income_certificate:'💰', birth_certificate:'👶', domicile_certificate:'🏠' };
+  let allApps = [];
+
+  async function loadApplications() {
+    const userId = window.govUtils.getUserId();
+    if (!userId) { window.location.href = 'login.html'; return; }
+
+    try {
+      allApps = await window.API.Applications.getByUser(userId);
+      updateStats(allApps);
+      renderApps(allApps);
+    } catch(err) {
+      document.getElementById('apps-list').innerHTML =
+        `<div class="alert alert-danger">Failed to load applications: ${err.message}</div>`;
+    }
+  }
+
+  function updateStats(apps) {
+    const total    = apps.length;
+    const approved = apps.filter(a => ['approved','auto_approved'].includes(a.status)).length;
+    const pending  = apps.filter(a => !['approved','auto_approved','rejected'].includes(a.status)).length;
+    const rejected = apps.filter(a => a.status === 'rejected').length;
+    document.getElementById('stat-total').textContent    = total;
+    document.getElementById('stat-approved').textContent = approved;
+    document.getElementById('stat-pending').textContent  = pending;
+    document.getElementById('stat-rejected').textContent = rejected;
+  }
+
+  function filterApps(filter, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    let filtered = allApps;
+    if (filter === 'approved') filtered = allApps.filter(a => ['approved','auto_approved'].includes(a.status));
+    else if (filter === 'pending') filtered = allApps.filter(a => !['approved','auto_approved','rejected'].includes(a.status));
+    else if (filter === 'rejected') filtered = allApps.filter(a => a.status === 'rejected');
+    renderApps(filtered);
+  }
+
+  function renderApps(apps) {
+    const container = document.getElementById('apps-list');
+
+    if (!apps.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📂</div>
+          <div class="empty-title">No Applications Found</div>
+          <div class="empty-desc">You haven't applied for any certificates yet.</div>
+          <a href="apply.html" class="btn btn-primary mt-lg">Apply for Certificate</a>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = apps.map(app => {
+      const icon   = TYPE_ICONS[app.service_type] || '📄';
+      const type   = window.govUtils.formatServiceType(app.service_type);
+      const status = window.govUtils.formatStatus(app.status);
+      const badge  = window.govUtils.statusBadgeClass(app.status);
+      const date   = window.govUtils.formatDate(app.created_at);
+      const income = app.extracted_income
+        ? `₹${Number(app.extracted_income).toLocaleString('en-IN')}`
+        : (app.service_type === 'income_certificate' ? 'Pending extraction' : null);
+      const isApproved = ['approved','auto_approved'].includes(app.status);
+
+      return `
+        <div class="app-card slide-in">
+          <div class="app-card-header">
+            <div class="app-card-type">${icon} ${type}</div>
+            <span class="badge ${badge}">${status}</span>
+          </div>
+          <div class="app-card-body">
+            <div class="app-detail-grid">
+              <div class="app-detail-item">
+                <div class="app-detail-label">Application ID</div>
+                <div class="app-detail-value" style="font-size:12px;font-family:monospace;">${app.id}</div>
+              </div>
+              <div class="app-detail-item">
+                <div class="app-detail-label">Applied On</div>
+                <div class="app-detail-value">${date}</div>
+              </div>
+              ${app.financial_year ? `<div class="app-detail-item">
+                <div class="app-detail-label">Financial Year</div>
+                <div class="app-detail-value">${app.financial_year}</div>
+              </div>` : ''}
+              ${income ? `<div class="app-detail-item">
+                <div class="app-detail-label">Annual Income</div>
+                <div class="app-detail-value">${income}</div>
+              </div>` : ''}
+            </div>
+          </div>
+          <div class="app-card-footer">
+            ${isApproved && app.certificate_url
+              ? `<a href="${app.certificate_url}" target="_blank" class="btn btn-success btn-sm">⬇️ Download Certificate</a>`
+              : ''}
+            ${!isApproved && app.status !== 'rejected'
+              ? `<span style="font-size:12.5px;color:var(--gov-grey-500);">⏳ Processing — check back soon</span>`
+              : ''}
+            ${app.status === 'rejected'
+              ? `<span style="font-size:12.5px;color:#842029;">❌ Rejected — see application details</span>`
+              : ''}
+            <button class="btn btn-outline btn-sm" onclick="trackApp('${app.id}')">🔍 Track Status</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function trackApp(id) {
+    try {
+      const data = await window.API.Applications.track(id);
+      const status = window.govUtils.formatStatus(data.status);
+      window.govUtils.showToast(`Application status: ${status}`, 'info', 5000);
+    } catch(err) {
+      window.govUtils.showToast('Could not fetch status.', 'error');
+    }
+  }
+
+  loadApplications();
+</script>
+</body>
+</html>

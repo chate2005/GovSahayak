@@ -6,12 +6,18 @@ const stringSimilarity = require("string-similarity");
 const PDFDocument = require("pdfkit");
 const cloudinary = require("cloudinary").v2;
 const { Readable } = require("stream");
+const Tesseract = require("tesseract.js");
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// ─── RAG + LLM Architecture Integration ─────────────────────────────────────
+const { verifyBirthApplication, CONFIDENCE_AUTO_APPROVE } = require("../services/llmVerificationAgent");
+
+// ─── Birth Document Authenticity Service (CRS & Hospital Verification) ──────
+const { verifyBirthDocumentAuthenticity } = require("../services/mockCivilRegistrationPortal");
+const { groq, createChatCompletion } = require("../services/aiHelper");
 
 async function urlToBase64(url) {
   try {
-    const response = await axios.get(url, { responseType: "arraybuffer", timeout: 30000 });
+    const response = await axios.get(url, { responseType: "arraybuffer", timeout: 30000, maxContentLength: 10 * 1024 * 1024 });
     const base64 = Buffer.from(response.data).toString("base64");
     const mimeType = response.headers["content-type"];
     return { base64, mimeType };
@@ -25,15 +31,20 @@ async function extractBirthProofDetails(fileUrl) {
     if (fileUrl.includes(".pdf") || fileUrl.includes("raw/upload")) {
       return { error: "PDF birth proof cannot be scanned. Please upload JPG or PNG." };
     }
-    const { base64, mimeType } = await urlToBase64(fileUrl);
-    const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    const { data: { text } } = await Tesseract.recognize(fileUrl, 'eng');
+    const completion = await createChatCompletion({
       temperature: 0,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
-          { type: "text", text: `This is a birth proof (Hospital Discharge Summary or Municipal Birth Record). Extract details. Reply ONLY JSON:
+      messages: [
+        {
+          role: "system",
+          content: "You are a birth proof document OCR data extractor. Extract structured fields from raw OCR text. Reply ONLY valid JSON."
+        },
+        {
+          role: "user",
+          content: `Raw OCR Text:
+"${text}"
+
+Extract details and reply ONLY this JSON:
 {
   "is_birth_proof": true,
   "child_name": "Full Name",
@@ -42,9 +53,9 @@ async function extractBirthProofDetails(fileUrl) {
   "father_name": "Full Name",
   "mother_name": "Full Name"
 }
-If NOT a birth proof, reply {"is_birth_proof": false}` }
-        ]
-      }]
+If NOT a birth proof, reply {"is_birth_proof": false}`
+        }
+      ]
     });
     const raw = completion.choices[0].message.content;
     const jsonMatch = raw.match(/\{[\s\S]*?\}/);
@@ -60,24 +71,29 @@ async function extractAadhaarDetails(fileUrl) {
     if (fileUrl.includes(".pdf") || fileUrl.includes("raw/upload")) {
       return { error: "PDF Aadhaar cannot be scanned. Please upload JPG or PNG." };
     }
-    const { base64, mimeType } = await urlToBase64(fileUrl);
-    const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    const { data: { text } } = await Tesseract.recognize(fileUrl, 'eng');
+    const completion = await createChatCompletion({
       temperature: 0,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
-          { type: "text", text: `This is an Aadhaar card. Extract details. Reply ONLY JSON:
+      messages: [
+        {
+          role: "system",
+          content: "You are an Indian Aadhaar card OCR data extractor. Extract structured fields from raw OCR text. Reply ONLY valid JSON."
+        },
+        {
+          role: "user",
+          content: `Raw OCR Text:
+"${text}"
+
+Extract details and reply ONLY this JSON:
 {
   "is_aadhaar": true,
   "name": "Full Name",
   "dob": "DD/MM/YYYY",
   "aadhaar_number": "1234 5678 9012"
 }
-If NOT an Aadhaar card, reply {"is_aadhaar": false}` }
-        ]
-      }]
+If NOT an Aadhaar card, reply {"is_aadhaar": false}`
+        }
+      ]
     });
     const raw = completion.choices[0].message.content;
     const jsonMatch = raw.match(/\{[\s\S]*?\}/);
@@ -320,31 +336,93 @@ exports.uploadDocument = async (req, res) => {
           flags.push("DUPLICATE_ENTRY");
       }
 
-      // Scoring
-      let confidence = 100 - (flags.length * 15);
-      if (confidence < 0) confidence = 0;
-      app.bc_confidence_score = confidence;
-      
-      let riskLevel = "LOW";
-      if (flags.length === 1) riskLevel = "MEDIUM";
-      if (flags.length >= 2 || flags.includes("DUPLICATE_ENTRY")) riskLevel = "HIGH";
-      
-      if (app.bc_flags) app.bc_flags = [...app.bc_flags, ...flags];
-      else app.bc_flags = flags;
+      // ── STEP 5.5: Birth Document Authenticity (CRS & Hospital Registry) ──
+      let birthAuthReport = null;
+      try {
+        birthAuthReport = verifyBirthDocumentAuthenticity(ocrProof, aadhaarDetails, app);
+        app.document_authenticity_report = birthAuthReport;
+
+        if (birthAuthReport.all_flags && birthAuthReport.all_flags.length > 0) {
+          flags.push(...birthAuthReport.all_flags);
+        }
+      } catch (authErr) {
+        console.error("[Birth] Document authenticity error (non-fatal):", authErr.message);
+      }
+
+      app.bc_flags = [...(app.bc_flags || []), ...flags];
       app.bc_risk_level = riskLevel;
 
-      if (flags.length > 0) {
+      // ── Invoke RAG + LLM Verification Agent ──────────────────────────────
+      let auditReport = null;
+      try {
+        // Compute parent age at birth for LLM context
+        let parentAgeAtBirth = null;
+        if (aadhaarDetails.dob && app.dob) {
+          parentAgeAtBirth = calculateAge(aadhaarDetails.dob, app.dob);
+        }
+
+        auditReport = await verifyBirthApplication(app, {
+          birthProof: ocrProof,
+          aadhaar: aadhaarDetails,
+          detectedParent: app.bc_parent_detected,
+          parentAgeAtBirth,
+          flags: [...(app.bc_flags || [])]
+        });
+
+        // Persist LLM audit report and RAG fields
+        app.llm_audit_report = auditReport;
+        app.rag_citations = auditReport.rag_citations || [];
+        app.uidai_verified = auditReport.uidai_verified || false;
+
+        // Update confidence and risk from LLM
+        app.bc_confidence_score = auditReport.confidence;
+        app.bc_risk_level = auditReport.risk_level;
+
+        // Merge LLM flags
+        if (auditReport.flags_raised?.length > 0) {
+          app.bc_flags = [...new Set([...(app.bc_flags || []), ...auditReport.flags_raised])];
+        }
+      } catch (llmErr) {
+        console.error("[Birth] LLM agent error (falling back to rule-based):", llmErr.message);
+        auditReport = null;
+      }
+
+      // ── Decision: LLM Hard Reject ────────────────────────────────────
+      if (auditReport?.decision === "REJECT") {
+          app.status = "rejected";
+          await app.save();
+          return res.json({
+              status: "rejected",
+              message: `❌ Your Birth Certificate application has been rejected.\n\nReason: ${auditReport.reasoning || "Application does not meet eligibility criteria."}`,
+              flags: app.bc_flags,
+              risk_level: app.bc_risk_level,
+              legal_citations: auditReport.legal_citations || []
+          });
+      }
+
+      // ── Decision: Officer Review (flags or LLM says so) ────────────────
+      const needsOfficerReview = flags.length > 0 ||
+        (auditReport && auditReport.decision === "OFFICER_REVIEW");
+
+      if (needsOfficerReview) {
           app.status = "sent_to_officer";
           await app.save();
           return res.json({ 
               status: "sent_to_officer", 
-              message: flags.includes("DUPLICATE_ENTRY") ? "A birth certificate already exists for this record. Sent to officer." : "Application sent to officer dashboard for manual review.",
-              flags: flags,
-              risk_level: riskLevel
+              message: flags.includes("DUPLICATE_ENTRY")
+                ? "A birth certificate already exists for this record. Sent to officer."
+                : auditReport?.officer_guidance
+                ? "Application sent to officer dashboard: " + auditReport.officer_guidance.slice(0, 150)
+                : "Application sent to officer dashboard for manual review.",
+              flags: app.bc_flags,
+              risk_level: app.bc_risk_level,
+              rag_verified: !!auditReport,
+              uidai_verified: app.uidai_verified,
+              legal_citations: auditReport?.legal_citations || []
           });
       }
 
-      // Passed all checks!
+      // ── Decision: Auto-Approve (no flags, LLM approves with ≥95% confidence) ─
       const certUrl = await generateBirthCertificate(app);
       app.certificate_url = certUrl;
       app.status = "approved";
@@ -352,7 +430,10 @@ exports.uploadDocument = async (req, res) => {
       return res.json({ 
           status: "approved", 
           message: "Congratulations! Your Birth Certificate is approved.",
-          certificate_url: certUrl
+          certificate_url: certUrl,
+          rag_verified: !!auditReport,
+          uidai_verified: app.uidai_verified,
+          llm_confidence: auditReport?.confidence
       });
     }
 

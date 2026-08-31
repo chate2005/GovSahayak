@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Officer Dashboard — GovSahayak Portal</title>
+  <meta name="description" content="Government officer review dashboard for certificate applications."/>
+  <link rel="stylesheet" href="css/main.css"/>
+  <style>
+    .officer-grid { display:grid; grid-template-columns:1fr 420px; gap:20px; }
+    @media(max-width:900px) { .officer-grid { grid-template-columns:1fr; } }
+
+    .app-row {
+      background:white; border-radius:10px; border:1px solid var(--gov-grey-200);
+      padding:14px 16px; cursor:pointer; margin-bottom:10px; transition:all 0.2s;
+      display:flex; align-items:center; gap:12px;
+    }
+    .app-row:hover, .app-row.selected { border-color:var(--gov-navy); background:rgba(0,48,135,0.02); }
+    .app-row.selected { box-shadow:0 0 0 2px rgba(0,48,135,0.2); }
+    .app-row-icon { font-size:22px; flex-shrink:0; }
+    .app-row-info { flex:1; min-width:0; }
+    .app-row-title { font-size:14px; font-weight:700; color:var(--gov-grey-800); }
+    .app-row-sub   { font-size:12px; color:var(--gov-grey-500); margin-top:2px; }
+
+    .detail-panel {
+      background:white; border-radius:12px; border:1px solid var(--gov-grey-200);
+      position:sticky; top:80px; overflow-y:auto; max-height:calc(100vh - 100px);
+    }
+    .detail-empty {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      min-height:300px; color:var(--gov-grey-400); text-align:center; padding:32px;
+    }
+    .detail-empty-icon { font-size:48px; margin-bottom:12px; }
+    .detail-header {
+      background:var(--gov-navy); color:white; padding:16px 20px;
+      border-radius:12px 12px 0 0;
+    }
+    .detail-section { padding:16px 20px; border-bottom:1px solid var(--gov-grey-100); }
+    .detail-label { font-size:11px; color:var(--gov-grey-500); text-transform:uppercase; margin-bottom:3px; }
+    .detail-value { font-size:13.5px; font-weight:600; color:var(--gov-grey-800); }
+    .detail-grid  { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+    .ocr-box {
+      background:var(--gov-grey-100); border-radius:8px; padding:12px;
+      font-size:12px; font-family:monospace; color:var(--gov-grey-700);
+      max-height:160px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;
+    }
+    .flags-list { list-style:none; }
+    .flags-list li {
+      display:flex; align-items:flex-start; gap:8px; padding:5px 0;
+      font-size:12.5px; color:#842029; border-bottom:1px dashed var(--gov-grey-100);
+    }
+    .flags-list li::before { content:'⚠️'; font-size:12px; flex-shrink:0; }
+
+    .doc-link {
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(0,48,135,0.06); border:1px solid rgba(0,48,135,0.15);
+      color:var(--gov-navy); padding:5px 12px; border-radius:6px; font-size:12.5px;
+      margin:4px; transition:var(--transition); text-decoration:none;
+    }
+    .doc-link:hover { background:var(--gov-navy); color:white; }
+
+    .action-panel { padding:16px 20px; background:var(--gov-grey-100); border-radius:0 0 12px 12px; }
+    .action-panel textarea { height:80px; font-size:13px; }
+    .action-btns { display:flex; gap:10px; margin-top:12px; }
+
+    .filter-pills { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+    .pill {
+      padding:5px 14px; border-radius:20px; font-size:12.5px; font-weight:600;
+      cursor:pointer; border:1.5px solid var(--gov-grey-300); background:white;
+      transition:var(--transition); color:var(--gov-grey-600);
+    }
+    .pill.active { background:var(--gov-saffron); color:white; border-color:var(--gov-saffron); }
+    .pill:hover:not(.active) { border-color:var(--gov-saffron); color:var(--gov-saffron); }
+  </style>
+</head>
+<body>
+
+<script src="js/api.js"></script>
+<script src="js/layout.js"></script>
+<script>renderHeader('officer');</script>
+
+<div class="breadcrumb">
+  <div class="breadcrumb-inner">
+    <a href="index.html">Home</a>
+    <span>›</span>
+    <span>Officer Dashboard</span>
+  </div>
+</div>
+
+<main>
+  <div class="page-container">
+
+    <div class="d-flex align-center justify-between mb-lg flex-wrap gap-md">
+      <div>
+        <h1 class="section-title" style="margin-bottom:4px;">🏛️ Officer Review Dashboard</h1>
+        <p style="font-size:14px;color:var(--gov-grey-600);">
+          Review flagged applications and make final decisions.
+          Designated Revenue Officer Authority.
+        </p>
+      </div>
+      <div class="d-flex gap-md">
+        <button class="btn btn-outline btn-sm" onclick="loadApplications()">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="officer-stats" style="grid-template-columns:repeat(5,1fr);">
+      <div class="stat-card"><div class="stat-icon blue">📋</div><div><div class="stat-num" id="os-total">—</div><div class="stat-label">Total</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange">⏳</div><div><div class="stat-num" id="os-pending">—</div><div class="stat-label">Pending Review</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-num" id="os-approved">—</div><div class="stat-label">Approved</div></div></div>
+      <div class="stat-card"><div class="stat-icon red">❌</div><div><div class="stat-num" id="os-rejected">—</div><div class="stat-label">Rejected</div></div></div>
+      <div class="stat-card"><div class="stat-icon purple">📜</div><div><div class="stat-num" id="os-auto">—</div><div class="stat-label">Fast-Track</div></div></div>
+    </div>
+
+    <!-- Two-column layout -->
+    <div class="officer-grid">
+
+      <!-- Left: Application List -->
+      <div>
+        <div class="d-flex align-center justify-between mb-md">
+          <div style="font-size:16px;font-weight:700;color:var(--gov-navy);">Applications Queue</div>
+          <select id="list-filter" class="form-control" style="width:auto;font-size:13px;" onchange="applyFilter()">
+            <option value="pending">Pending Review</option>
+            <option value="all">All Applications</option>
+          </select>
+        </div>
+        <div id="app-list">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <!-- Right: Detail Panel -->
+      <div>
+        <div class="detail-panel" id="detail-panel">
+          <div class="detail-empty">
+            <div class="detail-empty-icon">👈</div>
+            <div style="font-size:14px;font-weight:600;color:var(--gov-grey-600);">Select an application</div>
+            <div style="font-size:12.5px;color:var(--gov-grey-400);margin-top:6px;">Click on any application to view details and take action</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>renderFooter();</script>
+<script>
+  if (!window.govUtils.requireAuth()) window.location.href = 'login.html';
+
+  let allApps = [], selectedApp = null;
+  const TYPE_ICONS = { income_certificate:'💰', birth_certificate:'👶', domicile_certificate:'🏠' };
+
+  async function loadApplications() {
+    const filter = document.getElementById('list-filter')?.value || 'pending';
+    const container = document.getElementById('app-list');
+    container.innerHTML = '<div class="spinner"></div>';
+    try {
+      allApps = filter === 'pending'
+        ? await window.API.Officer.getPending()
+        : await window.API.Officer.getAll();
+      updateOfficerStats(allApps);
+      renderList(allApps);
+    } catch(err) {
+      container.innerHTML = `<div class="alert alert-danger">Failed to load: ${err.message}</div>`;
+    }
+  }
+
+  function applyFilter() { loadApplications(); }
+
+  function updateOfficerStats(apps) {
+    document.getElementById('os-total').textContent    = apps.length;
+    document.getElementById('os-pending').textContent  = apps.filter(a=>['sent_to_officer','documents_uploaded'].includes(a.status)).length;
+    document.getElementById('os-approved').textContent = apps.filter(a=>a.status==='approved').length;
+    document.getElementById('os-rejected').textContent = apps.filter(a=>a.status==='rejected').length;
+    document.getElementById('os-auto').textContent     = apps.filter(a=>a.auto_decision==='APPROVE').length;
+  }
+
+  function renderList(apps) {
+    const container = document.getElementById('app-list');
+    if (!apps.length) {
+      container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gov-grey-400);">
+        <div style="font-size:36px;margin-bottom:12px;">📭</div>No applications found.</div>`;
+      return;
+    }
+    container.innerHTML = apps.map(app => {
+      const icon = TYPE_ICONS[app.service_type] || '📄';
+      const type = window.govUtils.formatServiceType(app.service_type);
+      const badge = window.govUtils.statusBadgeClass(app.status);
+      const status = window.govUtils.formatStatus(app.status);
+      const name = app.user?.name || app.dc_full_name || app.child_name || app.name_from_chat || 'Unknown';
+      const conf = app.dc_confidence_score || app.bc_confidence_score || null;
+      const confHtml = conf !== null ? `<span style="font-size:11px;font-weight:700;color:${conf>=95?'#138808':conf>=75?'#d97706':'#dc3545'}">${Math.round(conf)}% confidence</span>` : '';
+      const date = window.govUtils.formatDate(app.createdAt);
+      return `<div class="app-row" onclick="selectApplication('${app._id}')">
+        <div class="app-row-icon">${icon}</div>
+        <div class="app-row-info">
+          <div class="app-row-title">${type} — ${name}</div>
+          <div class="app-row-sub">${date} · ${confHtml}</div>
+        </div>
+        <span class="badge ${badge}">${status}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function selectApplication(id) {
+    selectedApp = allApps.find(a => a._id === id);
+    if (!selectedApp) return;
+
+    // Highlight selected
+    document.querySelectorAll('.app-row').forEach(r => r.classList.remove('selected'));
+    event.currentTarget?.classList.add('selected');
+
+    renderDetail(selectedApp);
+  }
+
+  function renderDetail(app) {
+    const panel = document.getElementById('detail-panel');
+    const type  = window.govUtils.formatServiceType(app.service_type);
+    const name  = app.user?.name || app.dc_full_name || app.child_name || '—';
+    const email = app.user?.email || '—';
+    const phone = app.user?.phone || app.dc_mobile || app.bc_mobile || '—';
+    const status= window.govUtils.formatStatus(app.status);
+    const badge = window.govUtils.statusBadgeClass(app.status);
+
+    // Confidence score
+    const conf = app.dc_confidence_score || app.bc_confidence_score || null;
+    const risk = app.dc_risk_level || app.bc_risk_level || 'LOW';
+    const confHtml = conf !== null ? (() => {
+      const pct = Math.round(conf);
+      const lvl = pct>=95?'high':pct>=75?'medium':'low';
+      return `<div style="margin:12px 0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:13px;font-weight:600;">Eligibility Verification Score</span>
+          <span class="confidence-label ${lvl}" style="font-size:20px;">${pct}%</span>
+        </div>
+        <div class="confidence-bar-container"><div class="confidence-bar ${lvl}" style="width:${pct}%"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span style="font-size:11px;color:var(--gov-grey-500)">Digital Verification &amp; Policy Audit</span>
+          <span class="risk-${risk.toLowerCase()}">${risk} SCRUTINY</span>
+        </div>
+      </div>`;
+    })() : '';
+
+    // Flags
+    const flags = app.bc_flags || app.dc_flags || [];
+    const flagsHtml = flags.length
+      ? `<div class="detail-section">
+          <div style="font-size:13px;font-weight:700;color:#842029;margin-bottom:8px;">📋 Scrutiny &amp; Verification Notes (${flags.length})</div>
+          <ul class="flags-list">${flags.map(f=>`<li>${f}</li>`).join('')}</ul>
+        </div>` : '';
+
+    // Decision info
+    const autoDecision = app.auto_decision || '—';
+    const aiDecisionColor = autoDecision==='APPROVE'?'#138808':autoDecision==='REJECT'?'#dc3545':'#0d6efd';
+
+    // Documents
+    const docs = app.documents || [];
+    const docsHtml = docs.length
+      ? `<div class="detail-section">
+          <div style="font-size:13px;font-weight:700;color:var(--gov-navy);margin-bottom:8px;">📎 Uploaded Documents</div>
+          ${docs.map(d=>`<a class="doc-link" href="${d.file_url}" target="_blank">📄 ${d.file_type || 'Document'}</a>`).join('')}
+        </div>` : '';
+
+    // OCR data
+    const ocrData = app.dc_aadhaar_ocr || app.bc_birth_proof_ocr || null;
+    const ocrHtml = ocrData
+      ? `<div class="detail-section">
+          <div style="font-size:13px;font-weight:700;color:var(--gov-navy);margin-bottom:8px;">🔍 OCR Extracted Data</div>
+          <div class="ocr-box">${JSON.stringify(ocrData, null, 2)}</div>
+        </div>` : '';
+
+    // Domain-specific fields
+    let domainFields = '';
+    if (app.service_type === 'domicile_certificate') {
+      const addr = [app.dc_house_no,app.dc_street,app.dc_city,app.dc_district,app.dc_state,app.dc_pin].filter(Boolean).join(', ');
+      domainFields = `
+        <div class="detail-section"><div class="detail-grid">
+          <div><div class="detail-label">Duration (years)</div><div class="detail-value">${app.dc_duration_years||'—'}</div></div>
+          <div><div class="detail-label">Purpose</div><div class="detail-value">${app.dc_purpose||'—'}</div></div>
+          <div style="grid-column:span 2"><div class="detail-label">Address</div><div class="detail-value" style="font-size:13px;">${addr||'—'}</div></div>
+          <div><div class="detail-label">Aadhaar Last 4</div><div class="detail-value">XXXX ${app.dc_aadhaar_last4||'—'}</div></div>
+          <div><div class="detail-label">DOB</div><div class="detail-value">${app.dc_dob||'—'}</div></div>
+        </div></div>`;
+    } else if (app.service_type === 'birth_certificate') {
+      domainFields = `
+        <div class="detail-section"><div class="detail-grid">
+          <div><div class="detail-label">Child Name</div><div class="detail-value">${app.child_name||'—'}</div></div>
+          <div><div class="detail-label">Date of Birth</div><div class="detail-value">${app.dob||'—'}</div></div>
+          <div><div class="detail-label">Father</div><div class="detail-value">${app.father_name||'—'}</div></div>
+          <div><div class="detail-label">Mother</div><div class="detail-value">${app.mother_name||'—'}</div></div>
+          <div><div class="detail-label">Place of Birth</div><div class="detail-value">${app.place_of_birth||'—'}</div></div>
+          <div><div class="detail-label">Parent Detected</div><div class="detail-value">${app.bc_parent_detected||'—'}</div></div>
+        </div></div>`;
+    } else if (app.service_type === 'income_certificate') {
+      domainFields = `
+        <div class="detail-section"><div class="detail-grid">
+          <div><div class="detail-label">Annual Income</div><div class="detail-value">${app.extracted_income?'₹'+Number(app.extracted_income).toLocaleString('en-IN'):'—'}</div></div>
+          <div><div class="detail-label">Financial Year</div><div class="detail-value">${app.financial_year||'—'}</div></div>
+          <div><div class="detail-label">Aadhaar No.</div><div class="detail-value">${app.aadhaar_number||'—'}</div></div>
+        </div></div>`;
+    }
+
+    panel.innerHTML = `
+      <div class="detail-header">
+        <div style="font-size:15px;font-weight:700;">${type}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+          <span style="font-size:12px;opacity:.8;">ID: ${app._id}</span>
+          <span class="badge ${badge}">${status}</span>
+        </div>
+      </div>
+
+      <!-- Citizen Info -->
+      <div class="detail-section">
+        <div style="font-size:13px;font-weight:700;color:var(--gov-navy);margin-bottom:10px;">👤 Citizen Information</div>
+        <div class="detail-grid">
+          <div><div class="detail-label">Name</div><div class="detail-value">${name}</div></div>
+          <div><div class="detail-label">Phone</div><div class="detail-value">${phone}</div></div>
+          <div><div class="detail-label">Email</div><div class="detail-value" style="font-size:12.5px;">${email}</div></div>
+          <div><div class="detail-label">Submitted</div><div class="detail-value">${window.govUtils.formatDate(app.createdAt)}</div></div>
+        </div>
+      </div>
+
+      <!-- AI Confidence -->
+      ${confHtml ? `<div class="detail-section">${confHtml}<div style="margin-top:8px;"><div class="detail-label">AI Recommendation</div><div style="font-size:15px;font-weight:700;color:${aiDecisionColor};">${autoDecision}</div></div></div>` : ''}
+
+      <!-- Domain Fields -->
+      ${domainFields}
+
+      <!-- Flags -->
+      ${flagsHtml}
+
+      <!-- Documents -->
+      ${docsHtml}
+
+      <!-- OCR -->
+      ${ocrHtml}
+
+      <!-- Action Panel -->
+      <div class="action-panel">
+        <div style="font-size:13px;font-weight:700;color:var(--gov-navy);margin-bottom:10px;">
+          📝 Officer Decision
+        </div>
+        <textarea class="form-control" id="officer-note" placeholder="Enter remarks or reason for decision (required for rejection)…"></textarea>
+        <div class="action-btns">
+          <button class="btn btn-success" onclick="approveApp('${app._id}')">✅ Approve &amp; Issue Certificate</button>
+          <button class="btn btn-danger"  onclick="rejectApp('${app._id}')">❌ Reject</button>
+        </div>
+        <div style="font-size:11px;color:var(--gov-grey-400);margin-top:8px;">
+          Your decision is final and will be logged with timestamp.
+        </div>
+      </div>
+    `;
+  }
+
+  async function approveApp(id) {
+    const note = document.getElementById('officer-note')?.value || 'Approved by officer';
+    if (!confirm(`Approve this application and issue certificate?\n\nRemark: ${note}`)) return;
+    try {
+      const result = await window.API.Officer.approve(id, note);
+      window.govUtils.showToast('✅ Application approved! Certificate issued.', 'success');
+      if (result.certificate_url) window.open(result.certificate_url, '_blank');
+      loadApplications();
+      document.getElementById('detail-panel').innerHTML = '<div class="detail-empty"><div class="detail-empty-icon">✅</div><div>Application approved.</div></div>';
+    } catch(err) {
+      window.govUtils.showToast('Approval failed: ' + err.message, 'error');
+    }
+  }
+
+  async function rejectApp(id) {
+    const note = document.getElementById('officer-note')?.value;
+    if (!note) { window.govUtils.showToast('Please provide a reason for rejection.', 'warning'); return; }
+    if (!confirm(`Reject this application?\n\nReason: ${note}`)) return;
+    try {
+      await window.API.Officer.reject(id, note);
+      window.govUtils.showToast('Application rejected.', 'info');
+      loadApplications();
+      document.getElementById('detail-panel').innerHTML = '<div class="detail-empty"><div class="detail-empty-icon">❌</div><div>Application rejected.</div></div>';
+    } catch(err) {
+      window.govUtils.showToast('Rejection failed: ' + err.message, 'error');
+    }
+  }
+
+  loadApplications();
+</script>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GovSahayak — e-Certificate Portal | Government of India</title>
+  <meta name="description" content="Official AI-powered e-Certificate portal for Income, Domicile, and Birth Certificate applications. Fast, transparent, zero-hallucination verification."/>
+  <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/chatbot.css"/>
+</head>
+<body>
+
+<script src="js/api.js"></script>
+<script src="js/layout.js"></script>
+<script>renderHeader('home');</script>
+
+<!-- ── Breadcrumb ── -->
+<div class="breadcrumb">
+  <div class="breadcrumb-inner">
+    <a href="index.html">Home</a>
+  </div>
+</div>
+
+<!-- ── Hero ── -->
+<section class="hero-section">
+  <div class="hero-inner">
+    <div class="hero-badge">🇮🇳 Digital India · e-Governance Services</div>
+    <h1 class="hero-title">
+      Apply for Government Certificates<br>
+      <span>Fast, Transparent &amp; Digitally Verified</span>
+    </h1>
+    <p class="hero-subtitle">
+      Income Certificate, Domicile Certificate, and Birth Certificate — all in one place.
+      Official online verification system for fast, transparent, and auditable decisions.
+    </p>
+    <div class="hero-cta-group">
+      <a href="apply.html" class="btn btn-saffron btn-lg">📋 Apply Now</a>
+      <a href="login.html" class="btn btn-outline-white btn-lg">🔐 Citizen Login</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat-item">
+        <span class="hero-stat-num">95%</span>
+        <span class="hero-stat-label">Fast-Track Approval</span>
+      </div>
+      <div class="hero-stat-item">
+        <span class="hero-stat-num">&lt; 24h</span>
+        <span class="hero-stat-label">Average Processing</span>
+      </div>
+      <div class="hero-stat-item">
+        <span class="hero-stat-num">100%</span>
+        <span class="hero-stat-label">Secure Verification</span>
+      </div>
+      <div class="hero-stat-item">
+        <span class="hero-stat-num">Official</span>
+        <span class="hero-stat-label">Gazette Compliance</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Main Content ── -->
+<main>
+  <div class="page-container">
+
+    <!-- Notice Board -->
+    <div class="notice-board mb-xl">
+      <div class="notice-board-title">📢 Important Notice / महत्त्वपूर्ण सूचना</div>
+      <div class="notice-item">All certificates are digitally signed and verifiable via QR code. Physical visit to government office is NOT required.</div>
+      <div class="notice-item">Applicants must upload original scanned documents (JPG/PNG/PDF, max 5MB each).</div>
+      <div class="notice-item">Income threshold for EWS category: ₹8,00,000 per annum (as per central guidelines).</div>
+    </div>
+
+    <!-- Services Section -->
+    <h2 class="section-title">🏛️ Available Certificate Services</h2>
+    <p class="section-subtitle">Select a certificate to begin your application. All processing is AI-verified with full officer oversight.</p>
+
+    <div class="service-grid">
+
+      <!-- Income Certificate -->
+      <a href="apply.html?type=income" class="service-card income">
+        <div class="service-card-icon">💰</div>
+        <div class="service-card-title">Income Certificate</div>
+        <div class="service-card-desc">
+          Official certification of annual family income issued by the Revenue Department.
+          Required for EWS/OBC/scholarship applications.
+        </div>
+        <div class="service-card-docs">
+          <span class="doc-tag">Aadhaar Card</span>
+          <span class="doc-tag">Salary Slip / ITR</span>
+          <span class="doc-tag">PAN Card</span>
+        </div>
+        <div class="service-card-footer">
+          <span class="service-card-time">⏱ 24–48 hrs</span>
+          <span class="service-card-action">Apply →</span>
+        </div>
+      </a>
+
+      <!-- Birth Certificate -->
+      <a href="apply.html?type=birth" class="service-card birth">
+        <div class="service-card-icon">👶</div>
+        <div class="service-card-title">Birth Certificate</div>
+        <div class="service-card-desc">
+          Registration of birth under the Registration of Births &amp; Deaths Act, 1969.
+          Required for school admission, passport, and government benefits.
+        </div>
+        <div class="service-card-docs">
+          <span class="doc-tag">Hospital Discharge</span>
+          <span class="doc-tag">Parent Aadhaar</span>
+          <span class="doc-tag">Municipal Record</span>
+        </div>
+        <div class="service-card-footer">
+          <span class="service-card-time">⏱ 24–72 hrs</span>
+          <span class="service-card-action">Apply →</span>
+        </div>
+      </a>
+
+      <!-- Domicile Certificate -->
+      <a href="apply.html?type=domicile" class="service-card domicile">
+        <div class="service-card-icon">🏠</div>
+        <div class="service-card-title">Domicile Certificate</div>
+        <div class="service-card-desc">
+          Proof of residency for 15+ years in a state. Required for government jobs,
+          college admissions, and state-specific welfare schemes.
+        </div>
+        <div class="service-card-docs">
+          <span class="doc-tag">Aadhaar Card</span>
+          <span class="doc-tag">Address Proof</span>
+          <span class="doc-tag">Residency Proof (15 yrs)</span>
+        </div>
+        <div class="service-card-footer">
+          <span class="service-card-time">⏱ 2–5 days</span>
+          <span class="service-card-action">Apply →</span>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- How It Works -->
+    <div class="section-divider mt-xl mb-xl"><span>How It Works</span></div>
+
+    <h2 class="section-title text-center">How GovSahayak Processes Your Application</h2>
+    <p class="section-subtitle text-center mb-xl">A secure, multi-stage verification process ensures fast and compliant certificate issuance</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--sp-lg);">
+
+      <div class="card fade-in" style="text-align:center;padding:var(--sp-xl);">
+        <div style="font-size:36px;margin-bottom:var(--sp-md);">📄</div>
+        <div style="font-weight:700;color:var(--gov-navy);margin-bottom:8px;">1. Online Submission</div>
+        <div style="font-size:13px;color:var(--gov-grey-600);">Complete the application form and upload scanned copies of required documents</div>
+      </div>
+
+      <div class="card fade-in" style="text-align:center;padding:var(--sp-xl);">
+        <div style="font-size:36px;margin-bottom:var(--sp-md);">🔍</div>
+        <div style="font-weight:700;color:var(--gov-navy);margin-bottom:8px;">2. Document Verification</div>
+        <div style="font-size:13px;color:var(--gov-grey-600);">Automated identity verification, format validation, and government registry cross-checks</div>
+      </div>
+
+      <div class="card fade-in" style="text-align:center;padding:var(--sp-xl);">
+        <div style="font-size:36px;margin-bottom:var(--sp-md);">⚖️</div>
+        <div style="font-weight:700;color:var(--gov-navy);margin-bottom:8px;">3. Statutory Compliance</div>
+        <div style="font-size:13px;color:var(--gov-grey-600);">Application criteria evaluated strictly against state and central government resolutions</div>
+      </div>
+
+      <div class="card fade-in" style="text-align:center;padding:var(--sp-xl);">
+        <div style="font-size:36px;margin-bottom:var(--sp-md);">🏛️</div>
+        <div style="font-weight:700;color:var(--gov-navy);margin-bottom:8px;">4. Department Scrutiny</div>
+        <div style="font-size:13px;color:var(--gov-grey-600);">Compliance scoring and officer review workflow with comprehensive audit trails</div>
+      </div>
+
+      <div class="card fade-in" style="text-align:center;padding:var(--sp-xl);">
+        <div style="font-size:36px;margin-bottom:var(--sp-md);">📜</div>
+        <div style="font-weight:700;color:var(--gov-navy);margin-bottom:8px;">5. Certificate Issuance</div>
+        <div style="font-size:13px;color:var(--gov-grey-600);">Approved applications receive instant digitally signed certificates with verifiable QR codes</div>
+      </div>
+
+    </div>
+
+    <!-- FAQ / About -->
+    <div class="section-divider mt-xl mb-xl" id="about"><span>About the System</span></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-xl);">
+      <div>
+        <h3 style="color:var(--gov-navy);margin-bottom:var(--sp-md);">🏛️ Official Gazette Alignment</h3>
+        <p style="font-size:14px;color:var(--gov-grey-600);line-height:1.7;">
+          The system verifies eligibility directly against official Government Resolutions (GRs),
+          the Maharashtra Land Revenue Code, and the Registration of Births &amp; Deaths Act.
+          All decisions cite specific statutory sections for full legal transparency.
+        </p>
+      </div>
+      <div>
+        <h3 style="color:var(--gov-navy);margin-bottom:var(--sp-md);">👮 Officer Oversight &amp; Audit</h3>
+        <p style="font-size:14px;color:var(--gov-grey-600);line-height:1.7;">
+          Applications requiring additional scrutiny are seamlessly routed to designated revenue officers
+          with detailed document summaries and compliance logs. Officers hold complete administrative
+          authority on all certificate decisions.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>renderFooter();</script>
+<script src="js/chatbot.js"></script>
+
+</body>
+</html>

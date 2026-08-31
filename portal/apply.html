@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Apply for Certificate — GovSahayak Portal</title>
+  <meta name="description" content="Apply for Income, Birth, or Domicile Certificate online through GovSahayak government portal."/>
+  <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/chatbot.css"/>
+  <style>
+    .cert-selector { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:28px; }
+    .cert-option {
+      padding: 20px; border-radius: 12px; border: 2px solid var(--gov-grey-200);
+      cursor: pointer; text-align: center; transition: all 0.2s;
+      background: white;
+    }
+    .cert-option:hover { border-color: var(--gov-navy); }
+    .cert-option.selected { border-color: var(--gov-navy); background: rgba(0,48,135,0.04); }
+    .cert-option .cert-icon { font-size:30px; margin-bottom:8px; }
+    .cert-option .cert-name { font-size:13px; font-weight:700; color:var(--gov-grey-800); }
+    .cert-option .cert-time { font-size:11px; color:var(--gov-grey-500); margin-top:4px; }
+
+    .form-panel { display:none; }
+    .form-panel.active { display:block; animation: slideUp 0.3s ease; }
+
+    .submit-panel {
+      background: white; border-radius: 12px; padding: 24px;
+      border: 1px solid var(--gov-grey-200); text-align:center; margin-top:20px;
+    }
+    .submit-panel h3 { color:var(--gov-navy); margin-bottom:8px; }
+    .submit-panel p { font-size:13px; color:var(--gov-grey-600); margin-bottom:20px; }
+
+    .processing-state {
+      background: white; border-radius:12px; padding: 40px 24px;
+      text-align:center; border: 1px solid var(--gov-grey-200);
+    }
+    .processing-icon { font-size:56px; margin-bottom:16px; }
+    .processing-title { font-size:20px; font-weight:700; color:var(--gov-navy); margin-bottom:8px; }
+    .processing-desc { font-size:14px; color:var(--gov-grey-600); max-width:400px; margin:0 auto 20px; }
+    .processing-steps { list-style:none; text-align:left; max-width:360px; margin:0 auto 24px; }
+    .processing-steps li {
+      display:flex; align-items:center; gap:10px; padding:8px 0;
+      font-size:13.5px; color:var(--gov-grey-600);
+      border-bottom: 1px solid var(--gov-grey-100);
+    }
+    .processing-steps li .step-icon { font-size:16px; }
+    .processing-steps li.done { color:var(--gov-green); }
+    .processing-steps li.active { color:var(--gov-navy); font-weight:600; }
+
+    .result-card { border-radius:12px; padding:24px; margin-top:20px; }
+    .result-approved { background:rgba(19,136,8,0.06); border:2px solid rgba(19,136,8,0.3); }
+    .result-review   { background:rgba(13,110,253,0.05); border:2px solid rgba(13,110,253,0.25); }
+    .result-rejected { background:rgba(220,53,69,0.06); border:2px solid rgba(220,53,69,0.3); }
+
+    .confidence-display {
+      display:flex; align-items:center; gap:16px; margin:16px 0;
+      padding:16px; background:var(--gov-grey-100); border-radius:10px;
+    }
+    .citation-list { margin-top:12px; }
+    .citation-list li {
+      font-size:12.5px; color:var(--gov-grey-600); padding:4px 0;
+      border-bottom:1px dashed var(--gov-grey-200); display:flex; gap:6px;
+    }
+    .citation-list li::before { content:'§'; color:var(--gov-navy); font-weight:700; }
+  </style>
+</head>
+<body>
+
+<script src="js/api.js"></script>
+<script src="js/layout.js"></script>
+<script>renderHeader('apply');</script>
+
+<div class="breadcrumb">
+  <div class="breadcrumb-inner">
+    <a href="index.html">Home</a>
+    <span>›</span>
+    <span>Apply for Certificate</span>
+  </div>
+</div>
+
+<main>
+  <div class="page-container">
+    <h1 class="section-title">📋 Apply for Certificate</h1>
+    <p class="section-subtitle">Select the certificate type and fill the required form. All fields marked <span style="color:#dc3545">*</span> are mandatory.</p>
+
+    <!-- STEP 1: Select Certificate Type -->
+    <div class="form-section" id="cert-select-section">
+      <div class="form-section-header">
+        <span class="section-num">1</span>
+        Select Certificate Type
+      </div>
+      <div class="form-body">
+        <div class="cert-selector">
+          <div class="cert-option" id="opt-income" onclick="selectCert('income')">
+            <div class="cert-icon">💰</div>
+            <div class="cert-name">Income Certificate</div>
+            <div class="cert-time">⏱ 24–48 hrs</div>
+          </div>
+          <div class="cert-option" id="opt-birth" onclick="selectCert('birth')">
+            <div class="cert-icon">👶</div>
+            <div class="cert-name">Birth Certificate</div>
+            <div class="cert-time">⏱ 24–72 hrs</div>
+          </div>
+          <div class="cert-option" id="opt-domicile" onclick="selectCert('domicile')">
+            <div class="cert-icon">🏠</div>
+            <div class="cert-name">Domicile Certificate</div>
+            <div class="cert-time">⏱ 2–5 days</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════ -->
+    <!-- INCOME CERTIFICATE FORM           -->
+    <!-- ══════════════════════════════════ -->
+    <div id="form-income" class="form-panel">
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-num">2</span>
+          Applicant Personal Details
+        </div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Full Name <span class="required">*</span>
+                <span class="hint">(as on Aadhaar)</span>
+              </label>
+              <input type="text" id="inc-name" class="form-control" placeholder="e.g. Rajesh Kumar Sharma" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mobile Number <span class="required">*</span></label>
+              <input type="tel" id="inc-mobile" class="form-control" placeholder="10-digit mobile" maxlength="10" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email Address</label>
+              <input type="email" id="inc-email" class="form-control" placeholder="Optional"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Aadhaar Number <span class="required">*</span></label>
+              <input type="text" id="inc-aadhaar" class="form-control" placeholder="12-digit Aadhaar number" maxlength="12" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">PAN Number <span class="required">*</span></label>
+              <input type="text" id="inc-pan" class="form-control" placeholder="e.g. ABCDE1234F" maxlength="10" style="text-transform:uppercase" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Financial Year <span class="required">*</span></label>
+              <select id="inc-fy" class="form-control" required>
+                <option value="">Select Financial Year</option>
+                <option value="2025-2026">2025–2026</option>
+                <option value="2024-2025">2024–2025</option>
+                <option value="2023-2024">2023–2024</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-num">3</span>
+          Income &amp; Employment Details
+        </div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Declared Annual Income (₹) <span class="required">*</span></label>
+              <input type="number" id="inc-income" class="form-control" placeholder="e.g. 420000" min="0" required/>
+              <div class="form-hint">Total gross annual family income from all sources</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Employment Type <span class="required">*</span></label>
+              <select id="inc-emp-type" class="form-control" required onchange="handleEmploymentTypeChange(this.value)">
+                <option value="">Select type</option>
+                <option value="salaried" selected>Salaried (Private/PSU)</option>
+                <option value="government">Government Employee</option>
+                <option value="self_employed">Self Employed / Business</option>
+                <option value="agricultural">🌾 Agricultural / Farmer (शेतकरी / कृषी)</option>
+                <option value="other">Daily Wage / Laborer / Other</option>
+              </select>
+            </div>
+            <div class="form-group" id="group-inc-employer">
+              <label class="form-label" id="lbl-inc-employer">Employer / Company Name</label>
+              <input type="text" id="inc-employer" class="form-control" placeholder="Name of company or business"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Purpose of Certificate <span class="required">*</span></label>
+              <select id="inc-purpose" class="form-control" required>
+                <option value="">Select purpose</option>
+                <option value="EWS Reservation">EWS Reservation</option>
+                <option value="OBC/NCL Certificate">OBC/NCL Certificate</option>
+                <option value="Scholarship Application">Scholarship Application</option>
+                <option value="Government Job Application">Government Job Application</option>
+                <option value="Fee Concession">Fee Concession</option>
+                <option value="Other Government Purpose">Other Government Purpose</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-num">4</span>
+          Upload Required Documents
+        </div>
+        <div class="form-body">
+          <div class="alert alert-info mb-md" id="inc-doc-alert">
+            📋 <strong>Required Documents:</strong> Aadhaar Card + Latest Salary Slip / Form 16. Accepted formats: JPG, PNG, PDF (max 5MB each).
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Aadhaar Card (Front) <span class="required">*</span></label>
+              <div class="upload-zone" id="zone-inc-aadhaar" onclick="document.getElementById('file-inc-aadhaar').click()">
+                <input type="file" id="file-inc-aadhaar" accept="image/*,.pdf" style="display:none" onchange="previewFile(this,'preview-inc-aadhaar','zone-inc-aadhaar')"/>
+                <div class="upload-zone-icon">📄</div>
+                <div class="upload-zone-title">Click to upload Aadhaar Card</div>
+                <div class="upload-zone-subtitle">JPG, PNG or PDF · Max 5MB</div>
+              </div>
+              <div class="upload-preview" id="preview-inc-aadhaar"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" id="lbl-inc-doc">Salary Slip / Form 16 <span class="required">*</span></label>
+              <div class="upload-zone" id="zone-inc-income" onclick="document.getElementById('file-inc-income').click()">
+                <input type="file" id="file-inc-income" accept="image/*,.pdf" style="display:none" onchange="previewFile(this,'preview-inc-income','zone-inc-income')"/>
+                <div class="upload-zone-icon" id="icon-inc-doc">💼</div>
+                <div class="upload-zone-title" id="title-inc-doc">Click to upload Salary Slip / Form 16</div>
+                <div class="upload-zone-subtitle" id="sub-inc-doc">Latest salary slip or Form 16 showing Gross Pay · Max 5MB</div>
+              </div>
+              <div class="upload-preview" id="preview-inc-income"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="submit-panel">
+        <h3>📨 Submit Income Certificate Application</h3>
+        <p>
+          Your application and uploaded documents will be processed through the official digital verification and revenue compliance system.
+        </p>
+        <button class="btn btn-primary btn-lg" onclick="submitIncome()" id="submit-income-btn">
+          <span class="btn-text">✅ Submit Application</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════ -->
+    <!-- BIRTH CERTIFICATE FORM            -->
+    <!-- ══════════════════════════════════ -->
+    <div id="form-birth" class="form-panel">
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-num">2</span>
+          Child Information
+        </div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Child's Full Name <span class="required">*</span></label>
+              <input type="text" id="bc-child-name" class="form-control" placeholder="Full name of child" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date of Birth <span class="required">*</span></label>
+              <input type="date" id="bc-dob" class="form-control" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Gender <span class="required">*</span></label>
+              <select id="bc-gender" class="form-control" required>
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Place of Birth <span class="required">*</span>
+                <span class="hint">(Hospital + City)</span>
+              </label>
+              <input type="text" id="bc-place" class="form-control" placeholder="e.g. Fortis Hospital, Pune" required/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-num">3</span>
+          Parent / Guardian Details
+        </div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Father's Full Name <span class="required">*</span></label>
+              <input type="text" id="bc-father" class="form-control" placeholder="Father's name as on Aadhaar" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mother's Full Name <span class="required">*</span></label>
+              <input type="text" id="bc-mother" class="form-control" placeholder="Mother's name as on Aadhaar" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Father's Aadhaar Number</label>
+              <input type="text" id="bc-father-aadhaar" class="form-control" placeholder="12-digit Aadhaar" maxlength="12"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mother's Aadhaar Number</label>
+              <input type="text" id="bc-mother-aadhaar" class="form-control" placeholder="12-digit Aadhaar" maxlength="12"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Mobile Number <span class="required">*</span></label>
+              <input type="tel" id="bc-mobile" class="form-control" placeholder="10-digit mobile" maxlength="10" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Address</label>
+              <input type="text" id="bc-address" class="form-control" placeholder="Current residential address"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-num">4</span>
+          Upload Required Documents
+        </div>
+        <div class="form-body">
+          <div class="alert alert-info mb-md">
+            📋 <strong>Required:</strong> Hospital Discharge Summary or Municipal Birth Record.
+            <strong>Optional:</strong> Parent Aadhaar. Accepted: JPG, PNG, PDF (max 5MB).
+          </div>
+          <div class="alert alert-warning mb-md" id="bc-delay-notice" style="display:none;">
+            ⚠️ Birth registered after 21 days requires a <strong>Tehsildar/SDM endorsement</strong> under the Registration of Births &amp; Deaths Act, 1969.
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Birth Proof (Hospital Discharge / Municipal Record) <span class="required">*</span></label>
+              <div class="upload-zone" onclick="document.getElementById('file-bc-birth').click()">
+                <input type="file" id="file-bc-birth" accept="image/*,.pdf" style="display:none" onchange="previewFile(this,'preview-bc-birth')"/>
+                <div class="upload-zone-icon">🏥</div>
+                <div class="upload-zone-title">Click to upload Birth Proof</div>
+                <div class="upload-zone-subtitle">Hospital discharge or municipal record · Max 5MB</div>
+              </div>
+              <div class="upload-preview" id="preview-bc-birth"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Parent Aadhaar Card</label>
+              <div class="upload-zone" onclick="document.getElementById('file-bc-aadhaar').click()">
+                <input type="file" id="file-bc-aadhaar" accept="image/*,.pdf" style="display:none" onchange="previewFile(this,'preview-bc-aadhaar')"/>
+                <div class="upload-zone-icon">🪪</div>
+                <div class="upload-zone-title">Click to upload Parent Aadhaar</div>
+                <div class="upload-zone-subtitle">Father's or Mother's Aadhaar · Max 5MB</div>
+              </div>
+              <div class="upload-preview" id="preview-bc-aadhaar"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="submit-panel">
+        <h3>📨 Submit Birth Certificate Application</h3>
+        <p>CRS birth registry cross-check + LLM verification will be performed automatically.</p>
+        <button class="btn btn-primary btn-lg" onclick="submitBirth()" id="submit-birth-btn">
+          <span class="btn-text">✅ Submit Birth Certificate Application</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════ -->
+    <!-- DOMICILE CERTIFICATE FORM         -->
+    <!-- ══════════════════════════════════ -->
+    <div id="form-domicile" class="form-panel">
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-num">2</span>
+          Personal Details
+        </div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Full Name <span class="required">*</span>
+                <span class="hint">(as on Aadhaar)</span>
+              </label>
+              <input type="text" id="dc-name" class="form-control" placeholder="e.g. Priya Ramesh Patil" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mobile Number <span class="required">*</span></label>
+              <input type="tel" id="dc-mobile" class="form-control" placeholder="10-digit mobile" maxlength="10" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date of Birth <span class="required">*</span></label>
+              <input type="date" id="dc-dob" class="form-control" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Purpose <span class="required">*</span></label>
+              <select id="dc-purpose" class="form-control" required>
+                <option value="">Select purpose</option>
+                <option value="College / University Admission">College / University Admission</option>
+                <option value="Government Job Application">Government Job Application</option>
+                <option value="Scholarship Application">Scholarship Application</option>
+                <option value="Property / Land Registration">Property / Land Registration</option>
+                <option value="Other Government Purpose">Other Government Purpose</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-num">3</span>
+          Current Permanent Address
+        </div>
+        <div class="form-body">
+          <div class="form-grid form-grid-3">
+            <div class="form-group">
+              <label class="form-label">House / Flat No. <span class="required">*</span></label>
+              <input type="text" id="dc-house" class="form-control" placeholder="e.g. B-204" required/>
+            </div>
+            <div class="form-group full-width" style="grid-column:span 2">
+              <label class="form-label">Street / Area Name <span class="required">*</span></label>
+              <input type="text" id="dc-street" class="form-control" placeholder="e.g. Shivaji Nagar, Near State Bank" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">City / Village <span class="required">*</span></label>
+              <input type="text" id="dc-city" class="form-control" placeholder="e.g. Pune" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">District <span class="required">*</span></label>
+              <input type="text" id="dc-district" class="form-control" placeholder="e.g. Pune" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">State <span class="required">*</span></label>
+              <select id="dc-state" class="form-control" required>
+                <option value="">Select State / UT</option>
+                <option>Maharashtra</option><option>Gujarat</option><option>Delhi</option>
+                <option>Karnataka</option><option>Tamil Nadu</option><option>West Bengal</option>
+                <option>Rajasthan</option><option>Uttar Pradesh</option><option>Bihar</option>
+                <option>Madhya Pradesh</option><option>Telangana</option><option>Kerala</option>
+                <option>Punjab</option><option>Haryana</option><option>Andhra Pradesh</option>
+                <option>Odisha</option><option>Chhattisgarh</option><option>Jharkhand</option>
+                <option>Assam</option><option>Uttarakhand</option><option>Himachal Pradesh</option>
+                <option>Goa</option><option>Tripura</option><option>Meghalaya</option>
+                <option>Manipur</option><option>Nagaland</option><option>Arunachal Pradesh</option>
+                <option>Mizoram</option><option>Sikkim</option><option>Jammu and Kashmir</option>
+                <option>Ladakh</option><option>Chandigarh</option><option>Puducherry</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">PIN Code <span class="required">*</span></label>
+              <input type="text" id="dc-pin" class="form-control" placeholder="6-digit PIN" maxlength="6" required/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-num">4</span>
+          Residency Duration
+        </div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Years of Continuous Residency <span class="required">*</span></label>
+              <input type="number" id="dc-years" class="form-control" placeholder="e.g. 18" min="1" max="100" required/>
+              <div class="form-hint">Minimum 15 years required for domicile certificate eligibility</div>
+              <div class="form-error" id="dc-years-error">⚠️ Minimum 15 years residency required for domicile certificate.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Residency Since Year</label>
+              <input type="number" id="dc-since" class="form-control" placeholder="e.g. 2006" min="1900" max="2025"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-header">
+          <span class="section-num">5</span>
+          Upload Required Documents (3 Documents)
+        </div>
+        <div class="form-body">
+          <div class="alert alert-info mb-md">
+            📋 <strong>Required:</strong>
+            (1) Aadhaar Card · (2) Current Address Proof (Utility Bill/Voter ID) · (3) Residency Duration Proof (15+ years). Max 5MB each.
+          </div>
+          <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
+            <div class="form-group">
+              <label class="form-label">📄 Aadhaar Card <span class="required">*</span></label>
+              <div class="upload-zone" onclick="document.getElementById('file-dc-aadhaar').click()">
+                <input type="file" id="file-dc-aadhaar" accept="image/*,.pdf" style="display:none" onchange="previewFile(this,'preview-dc-aadhaar')"/>
+                <div class="upload-zone-icon">🪪</div>
+                <div class="upload-zone-title">Upload Aadhaar Card</div>
+                <div class="upload-zone-subtitle">Front side · Max 5MB</div>
+              </div>
+              <div class="upload-preview" id="preview-dc-aadhaar"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">🧾 Address Proof <span class="required">*</span></label>
+              <div class="upload-zone" onclick="document.getElementById('file-dc-addr').click()">
+                <input type="file" id="file-dc-addr" accept="image/*,.pdf" style="display:none" onchange="previewFile(this,'preview-dc-addr')"/>
+                <div class="upload-zone-icon">📋</div>
+                <div class="upload-zone-title">Upload Address Proof</div>
+                <div class="upload-zone-subtitle">Voter ID / Utility Bill · Max 5MB</div>
+              </div>
+              <div class="upload-preview" id="preview-dc-addr"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">📁 Residency Proof (15+ years) <span class="required">*</span></label>
+              <div class="upload-zone" onclick="document.getElementById('file-dc-res').click()">
+                <input type="file" id="file-dc-res" accept="image/*,.pdf" style="display:none" onchange="previewFile(this,'preview-dc-res')"/>
+                <div class="upload-zone-icon">🏡</div>
+                <div class="upload-zone-title">Upload Residency Proof</div>
+                <div class="upload-zone-subtitle">School LC / Old utility bills · Max 5MB</div>
+              </div>
+              <div class="upload-preview" id="preview-dc-res"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="submit-panel">
+        <h3>📨 Submit Domicile Certificate Application</h3>
+        <p>
+          UIDAI e-KYC, residency verification, and RAG-based legal check will be performed automatically.
+          Minimum 15 years of continuous residency required.
+        </p>
+        <button class="btn btn-primary btn-lg" onclick="submitDomicile()" id="submit-dc-btn">
+          <span class="btn-text">✅ Submit Domicile Application</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PROCESSING / RESULT STATE -->
+    <div id="processing-section" style="display:none;">
+      <div class="processing-state">
+        <div class="processing-icon" id="proc-icon">⏳</div>
+        <div class="processing-title" id="proc-title">Verifying Your Application…</div>
+        <div class="processing-desc" id="proc-desc">
+          Please wait while the official digital verification system processes your documents.
+          This usually takes a few moments.
+        </div>
+        <ul class="processing-steps" id="proc-steps">
+          <li class="active" id="pstep-ocr"><span class="step-icon">🔍</span> Document Authenticity &amp; Format Verification</li>
+          <li id="pstep-fraud"><span class="step-icon">🛡️</span> Identity &amp; Record Cross-Verification</li>
+          <li id="pstep-gov"><span class="step-icon">🏛️</span> Department Registry Validation</li>
+          <li id="pstep-rag"><span class="step-icon">📚</span> Statutory Policy &amp; Gazette Compliance Check</li>
+          <li id="pstep-llm"><span class="step-icon">⚖️</span> Official Eligibility Evaluation</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="result-section" style="display:none;"></div>
+
+  </div>
+</main>
+
+<script>renderFooter();</script>
+<script src="js/chatbot.js"></script>
+<script>
+  let selectedCert = null;
+
+  // Select from URL param
+  window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get('type');
+    if (type) selectCert(type);
+
+    const empSelect = document.getElementById('inc-emp-type');
+    if (empSelect && empSelect.value) {
+      handleEmploymentTypeChange(empSelect.value);
+    }
+
+    // Birth date change — show late registration warning
+    const bcDob = document.getElementById('bc-dob');
+    if (bcDob) {
+      bcDob.addEventListener('change', function() {
+        const dob = new Date(this.value);
+        const diffDays = Math.floor((Date.now() - dob) / 86400000);
+        const notice = document.getElementById('bc-delay-notice');
+        if (notice) notice.style.display = diffDays > 21 ? '' : 'none';
+      });
+    }
+  });
+
+  function handleEmploymentTypeChange(type) {
+    const docAlert = document.getElementById('inc-doc-alert');
+    const docLabel = document.getElementById('lbl-inc-doc');
+    const docIcon  = document.getElementById('icon-inc-doc');
+    const docTitle = document.getElementById('title-inc-doc');
+    const docSub   = document.getElementById('sub-inc-doc');
+    const empLabel = document.getElementById('lbl-inc-employer');
+    const empInput = document.getElementById('inc-employer');
+
+    if (!docAlert) return;
+
+    if (type === 'agricultural') {
+      docAlert.className = 'alert alert-success mb-md';
+      docAlert.innerHTML = `🌾 <strong>Farmer / Agricultural Category (शेतकरी / कृषी):</strong> Please upload your <strong>7/12 Land Extract (सातबारा उतारा / 8A Extract)</strong> or Talathi Agricultural Income Report along with your Aadhaar Card.`;
+      docLabel.innerHTML = `🌾 7/12 Land Extract (सातबारा उतारा) / 8A Extract <span class="required">*</span>`;
+      docIcon.textContent = '🌾';
+      docTitle.textContent = 'Click to upload 7/12 Extract (सातबारा उतारा) / 8A';
+      docSub.textContent = 'Official Satbara extract showing Gat/Survey No., land area & crop details · Max 5MB';
+      empLabel.textContent = 'Village / Gat No. / Land Location (शेतजमिनीचे गाव / गट क्र.)';
+      empInput.placeholder = 'e.g. Gat No. 142, Village Shirur, Tal. Shirur, Dist. Pune';
+    } else if (type === 'self_employed') {
+      docAlert.className = 'alert alert-info mb-md';
+      docAlert.innerHTML = `📊 <strong>Self-Employed / Business Category:</strong> Please upload your <strong>ITR-V Acknowledgment, Form 26AS, or CA Income Statement</strong> along with your Aadhaar Card.`;
+      docLabel.innerHTML = `📊 ITR-V / Form 26AS / P&L Statement <span class="required">*</span>`;
+      docIcon.textContent = '📊';
+      docTitle.textContent = 'Click to upload ITR-V / Form 26AS / P&L';
+      docSub.textContent = 'Latest ITR acknowledgement (ITR-3/ITR-4) or CA turnover statement · Max 5MB';
+      empLabel.textContent = 'Business / Firm Name & GSTIN';
+      empInput.placeholder = 'e.g. Apex Trading / GSTIN: 27AAPFU0939F1ZV';
+    } else if (type === 'government') {
+      docAlert.className = 'alert alert-info mb-md';
+      docAlert.innerHTML = `🏛️ <strong>Government Employee:</strong> Please upload your official <strong>Government Pay Slip or Form 16</strong> showing DDO Code & GPF/NPS details.`;
+      docLabel.innerHTML = `🏛️ Govt Pay Slip / Form 16 <span class="required">*</span>`;
+      docIcon.textContent = '🏛️';
+      docTitle.textContent = 'Click to upload Govt Pay Slip / Form 16';
+      docSub.textContent = 'Official government salary slip showing DDO details & GPF/NPS · Max 5MB';
+      empLabel.textContent = 'Govt Department / Office Name & DDO Code';
+      empInput.placeholder = 'e.g. Maharashtra Revenue Dept / DDO Code: 270104';
+    } else if (type === 'other') {
+      docAlert.className = 'alert alert-info mb-md';
+      docAlert.innerHTML = `📜 <strong>Daily Wage / Informal / Other:</strong> Please upload your <strong>Talathi / Tahsildar Income Affidavit (उत्पन्नाचे स्वयंघोषणापत्र)</strong> or BPL Ration Card.`;
+      docLabel.innerHTML = `📜 Talathi Income Affidavit / Ration Card <span class="required">*</span>`;
+      docIcon.textContent = '📜';
+      docTitle.textContent = 'Click to upload Income Affidavit / Ration Card';
+      docSub.textContent = 'Self-declaration affidavit (स्वयंघोषणापत्र) or BPL/Antyodaya Ration card · Max 5MB';
+      empLabel.textContent = 'Occupation / Source of Livelihood';
+      empInput.placeholder = 'e.g. Daily Wage Worker / Artisan / Driver';
+    } else {
+      // Salaried default
+      docAlert.className = 'alert alert-info mb-md';
+      docAlert.innerHTML = `📋 <strong>Salaried Employee:</strong> Please upload your <strong>Latest Salary Slip or Form 16</strong> along with your Aadhaar Card.`;
+      docLabel.innerHTML = `💼 Salary Slip / Form 16 <span class="required">*</span>`;
+      docIcon.textContent = '💼';
+      docTitle.textContent = 'Click to upload Salary Slip / Form 16';
+      docSub.textContent = 'Latest salary slip or Form 16 showing Gross Pay & Deductions · Max 5MB';
+      empLabel.textContent = 'Employer / Company Name';
+      empInput.placeholder = 'e.g. Tata Consultancy Services Ltd';
+    }
+  }
+
+  function selectCert(type) {
+    selectedCert = type;
+    ['income','birth','domicile'].forEach(t => {
+      document.getElementById(`opt-${t}`)?.classList.remove('selected');
+      document.getElementById(`form-${t}`)?.classList.remove('active');
+    });
+    document.getElementById(`opt-${type}`)?.classList.add('selected');
+    document.getElementById(`form-${type}`)?.classList.add('active');
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('processing-section').style.display = 'none';
+    document.getElementById(`form-${type}`)?.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  function previewFile(input, previewId, zoneId) {
+    const preview = document.getElementById(previewId);
+    if (!preview) return;
+    if (input.files && input.files[0]) {
+      const name = input.files[0].name;
+      const size = (input.files[0].size / 1024).toFixed(0);
+      preview.classList.add('visible');
+      preview.innerHTML = `✅ <span style="flex:1">${name} (${size} KB)</span>
+        <button class="remove-file" onclick="removeFile('${input.id}','${previewId}')">✕</button>`;
+    }
+  }
+
+  function removeFile(inputId, previewId) {
+    document.getElementById(inputId).value = '';
+    const p = document.getElementById(previewId);
+    p.classList.remove('visible');
+    p.innerHTML = '';
+  }
+
+  function animateProcessingSteps() {
+    const steps = ['pstep-ocr','pstep-fraud','pstep-gov','pstep-rag','pstep-llm'];
+    let i = 0;
+    return new Promise(resolve => {
+      const interval = setInterval(() => {
+        if (i > 0) steps[i-1] && document.getElementById(steps[i-1])?.classList.replace('active','done');
+        if (i < steps.length) {
+          document.getElementById(steps[i])?.classList.add('active');
+          i++;
+        } else {
+          clearInterval(interval);
+          steps.forEach(s => document.getElementById(s)?.classList.replace('active','done'));
+          resolve();
+        }
+      }, 1800);
+    });
+  }
+
+  function showProcessing() {
+    document.getElementById('processing-section').style.display = '';
+    document.getElementById('result-section').style.display = 'none';
+    ['pstep-ocr','pstep-fraud','pstep-gov','pstep-rag','pstep-llm'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.classList.remove('active','done'); }
+    });
+    document.getElementById('processing-section').scrollIntoView({ behavior:'smooth' });
+  }
+
+  function showResult(data) {
+    document.getElementById('processing-section').style.display = 'none';
+    const section = document.getElementById('result-section');
+    section.style.display = '';
+
+    const appId = data.application_id || data._id || '—';
+    const status = data.status || data.auto_decision || 'pending';
+    const confidence = data.confidence || data.bc_confidence_score || data.dc_confidence_score || null;
+    const flags = data.flags || data.bc_flags || data.dc_flags || [];
+    const certUrl = data.certificate_url;
+    const decision = data.auto_decision || status;
+    const reasoning = data.reasoning || data.officer_guidance || '';
+    const citations = data.legal_citations || data.rag_citations || [];
+    const riskLevel = data.risk_level || data.bc_risk_level || data.dc_risk_level || 'LOW';
+
+    let cardClass = 'result-review';
+    let icon = '🔍', headline = 'Application Under Review';
+    let subtext = 'Your application has been submitted. An officer will review it shortly.';
+
+    if (['approved','auto_approved'].includes(decision?.toLowerCase())) {
+      cardClass = 'result-approved'; icon = '✅'; headline = 'Certificate Approved!';
+      subtext = 'Your application has been approved. Download your certificate below.';
+    } else if (['rejected'].includes(decision?.toLowerCase())) {
+      cardClass = 'result-rejected'; icon = '❌'; headline = 'Application Rejected';
+      subtext = 'Your application did not meet the eligibility criteria. See reasons below.';
+    }
+
+    let confHtml = '';
+    if (confidence !== null && confidence !== undefined) {
+      const pct = Math.round(Number(confidence));
+      const level = pct >= 75 ? (pct >= 95 ? 'high' : 'medium') : 'low';
+      confHtml = `
+        <div class="confidence-display">
+          <div><div class="confidence-label ${level}">${pct}%</div><div style="font-size:11px;color:var(--gov-grey-500)">Verification</div></div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Eligibility Verification Score</div>
+            <div class="confidence-bar-container"><div class="confidence-bar ${level}" style="width:${pct}%"></div></div>
+          </div>
+          <div>
+            <span class="risk-${riskLevel.toLowerCase()}">${riskLevel} SCRUTINY</span>
+          </div>
+        </div>`;
+    }
+
+    let flagsHtml = flags.length
+      ? `<div class="mb-md"><strong style="font-size:13px;">📋 Scrutiny Notes:</strong>
+           <ul style="margin-top:6px;">${flags.map(f=>`<li style="font-size:12.5px;color:#842029;padding:2px 0">${f}</li>`).join('')}</ul></div>`
+      : '';
+
+    let citHtml = citations.length
+      ? `<div class="mt-md"><strong style="font-size:13px;">🏛️ Government Gazette &amp; Rule References:</strong>
+           <ul class="citation-list mt-md">${citations.map(c=>`<li>${typeof c==='object'?(c.heading||c.section||JSON.stringify(c)):c}</li>`).join('')}</ul></div>`
+      : '';
+
+    let certHtml = certUrl
+      ? `<div class="mt-lg text-center">
+           <a href="${certUrl}" target="_blank" class="btn btn-success btn-lg">⬇️ Download Certificate PDF</a>
+         </div>` : '';
+
+    section.innerHTML = `
+      <div class="result-card ${cardClass}">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <span style="font-size:36px">${icon}</span>
+          <div>
+            <div style="font-size:20px;font-weight:700;">${headline}</div>
+            <div style="font-size:13px;color:var(--gov-grey-600);margin-top:3px;">${subtext}</div>
+          </div>
+        </div>
+        <div style="font-size:12.5px;color:var(--gov-grey-500);margin-bottom:12px;">
+          Application ID: <strong>${appId}</strong>
+        </div>
+        ${confHtml}
+        ${flagsHtml}
+        ${reasoning ? `<div class="mt-md"><strong style="font-size:13px;">🤖 AI Reasoning:</strong><p style="font-size:13px;color:var(--gov-grey-600);margin-top:6px;line-height:1.6;">${reasoning}</p></div>` : ''}
+        ${citHtml}
+        ${certHtml}
+        <div class="mt-lg d-flex gap-md flex-wrap">
+          <a href="dashboard.html" class="btn btn-outline">📊 View My Applications</a>
+          <button class="btn btn-saffron" onclick="selectCert('${selectedCert}')">🔄 Apply Again</button>
+        </div>
+      </div>`;
+
+    section.scrollIntoView({ behavior:'smooth' });
+  }
+
+  function setSubmitLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.disabled = loading;
+    btn.classList.toggle('btn-loading', loading);
+  }
+
+  // ── Income Submit ──────────────────────────────────────
+  async function submitIncome() {
+    if (!window.govUtils.requireAuth()) return;
+
+    const aadhaarFile = document.getElementById('file-inc-aadhaar').files[0];
+    const incomeFile  = document.getElementById('file-inc-income').files[0];
+    if (!aadhaarFile || !incomeFile) {
+      window.govUtils.showToast('Please upload both required documents.', 'warning'); return;
+    }
+
+    setSubmitLoading('submit-income-btn', true);
+    showProcessing();
+
+    const fd = new FormData();
+    fd.append('aadhaar', aadhaarFile);
+    fd.append('income_proof', incomeFile);
+    fd.append('user_id',   window.govUtils.getUserId());
+    fd.append('name',      document.getElementById('inc-name').value);
+    fd.append('mobile',    document.getElementById('inc-mobile').value);
+    fd.append('aadhaar_number', document.getElementById('inc-aadhaar').value);
+    fd.append('pan_number',     document.getElementById('inc-pan').value);
+    fd.append('declared_income',document.getElementById('inc-income').value);
+    fd.append('employment_type',document.getElementById('inc-emp-type').value);
+    fd.append('employer_name',  document.getElementById('inc-employer').value);
+    fd.append('purpose',        document.getElementById('inc-purpose').value);
+    fd.append('financial_year', document.getElementById('inc-fy').value);
+
+    const stepsDone = animateProcessingSteps();
+    try {
+      const [result] = await Promise.all([window.API.Income.upload(fd), stepsDone]);
+      showResult(result);
+      window.govUtils.showToast('Application submitted successfully!', 'success');
+    } catch(err) {
+      document.getElementById('processing-section').style.display = 'none';
+      window.govUtils.showToast(err.message || 'Submission failed. Please retry.', 'error');
+    } finally { setSubmitLoading('submit-income-btn', false); }
+  }
+
+  // ── Birth Submit ───────────────────────────────────────
+  async function submitBirth() {
+    if (!window.govUtils.requireAuth()) return;
+
+    const birthFile = document.getElementById('file-bc-birth').files[0];
+    if (!birthFile) {
+      window.govUtils.showToast('Please upload the birth proof document.', 'warning'); return;
+    }
+
+    setSubmitLoading('submit-birth-btn', true);
+    showProcessing();
+
+    const fd = new FormData();
+    fd.append('document', birthFile);
+    fd.append('user_id',     window.govUtils.getUserId());
+    fd.append('child_name',  document.getElementById('bc-child-name').value);
+    fd.append('dob',         document.getElementById('bc-dob').value);
+    fd.append('gender',      document.getElementById('bc-gender').value);
+    fd.append('place_of_birth', document.getElementById('bc-place').value);
+    fd.append('father_name', document.getElementById('bc-father').value);
+    fd.append('mother_name', document.getElementById('bc-mother').value);
+    fd.append('father_aadhaar', document.getElementById('bc-father-aadhaar').value);
+    fd.append('mother_aadhaar', document.getElementById('bc-mother-aadhaar').value);
+    fd.append('mobile',      document.getElementById('bc-mobile').value);
+    fd.append('address',     document.getElementById('bc-address').value);
+
+    const aadFile = document.getElementById('file-bc-aadhaar').files[0];
+    if (aadFile) fd.append('document', aadFile);
+
+    const stepsDone = animateProcessingSteps();
+    try {
+      const [result] = await Promise.all([window.API.Birth.upload(fd), stepsDone]);
+      showResult(result);
+      window.govUtils.showToast('Birth certificate application submitted!', 'success');
+    } catch(err) {
+      document.getElementById('processing-section').style.display = 'none';
+      window.govUtils.showToast(err.message || 'Submission failed. Please retry.', 'error');
+    } finally { setSubmitLoading('submit-birth-btn', false); }
+  }
+
+  // ── Domicile Submit ────────────────────────────────────
+  async function submitDomicile() {
+    if (!window.govUtils.requireAuth()) return;
+
+    const years = parseInt(document.getElementById('dc-years').value);
+    if (isNaN(years) || years < 15) {
+      document.getElementById('dc-years-error').classList.add('visible');
+      window.govUtils.showToast('Minimum 15 years residency required for domicile certificate.', 'warning');
+      return;
+    }
+    document.getElementById('dc-years-error').classList.remove('visible');
+
+    const aadhaarFile = document.getElementById('file-dc-aadhaar').files[0];
+    const addrFile    = document.getElementById('file-dc-addr').files[0];
+    const resFile     = document.getElementById('file-dc-res').files[0];
+
+    if (!aadhaarFile || !addrFile || !resFile) {
+      window.govUtils.showToast('Please upload all 3 required documents.', 'warning'); return;
+    }
+
+    setSubmitLoading('submit-dc-btn', true);
+    showProcessing();
+
+    // Domicile uses step-by-step upload — first send aadhaar as step 1
+    const fd1 = new FormData();
+    fd1.append('document', aadhaarFile);
+    fd1.append('user_id',      window.govUtils.getUserId());
+    fd1.append('dc_full_name', document.getElementById('dc-name').value);
+    fd1.append('dc_mobile',    document.getElementById('dc-mobile').value);
+    fd1.append('dc_dob',       document.getElementById('dc-dob').value);
+    fd1.append('dc_house_no',  document.getElementById('dc-house').value);
+    fd1.append('dc_street',    document.getElementById('dc-street').value);
+    fd1.append('dc_city',      document.getElementById('dc-city').value);
+    fd1.append('dc_district',  document.getElementById('dc-district').value);
+    fd1.append('dc_state',     document.getElementById('dc-state').value);
+    fd1.append('dc_pin',       document.getElementById('dc-pin').value);
+    fd1.append('dc_duration_years', years);
+    fd1.append('dc_purpose',   document.getElementById('dc-purpose').value);
+    fd1.append('upload_step',  '1');
+    // Attach all 3 docs so backend can process them
+    fd1.append('addr_proof', addrFile);
+    fd1.append('residency_proof', resFile);
+
+    const stepsDone = animateProcessingSteps();
+    try {
+      const [result] = await Promise.all([window.API.Domicile.upload(fd1, 1), stepsDone]);
+      showResult(result);
+      window.govUtils.showToast('Domicile application submitted!', 'success');
+    } catch(err) {
+      document.getElementById('processing-section').style.display = 'none';
+      window.govUtils.showToast(err.message || 'Submission failed. Please retry.', 'error');
+    } finally { setSubmitLoading('submit-dc-btn', false); }
+  }
+</script>
+</body>
+</html>

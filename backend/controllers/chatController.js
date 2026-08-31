@@ -1,7 +1,206 @@
 const Groq = require("groq-sdk");
 const Application = require("../models/Application");
+const { retrieveRelevantClauses, loadPolicy } = require("../services/ragEligibilityService");
+const { groq, createChatCompletion } = require("../services/aiHelper");
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// ─────────────────────────────────────────────────────────────
+// Pre-warm all policy indexes on startup
+// ─────────────────────────────────────────────────────────────
+try { ["income","domicile","birth"].forEach(d => loadPolicy(d)); } catch(e) {}
+
+// ─────────────────────────────────────────────────────────────
+// Detect certificate domain from question text
+// ─────────────────────────────────────────────────────────────
+function detectDomain(text) {
+  const t = text.toLowerCase();
+  if (/domicile|residence|residency|15.year|rahivasi|adhiwas/.test(t)) return "domicile";
+  if (/birth|born|child|hospital|registration.*birth|21.day/.test(t)) return "birth";
+  if (/income|salary|ews|creamy.layer|non.creamy|8.lakh|annual.income/.test(t)) return "income";
+  return null; // all domains
+}
+
+// ─────────────────────────────────────────────────────────────
+// Portal Navigation & Website Knowledge Base
+// ─────────────────────────────────────────────────────────────
+const PORTAL_KNOWLEDGE = `
+GOVSAHAYAK PORTAL & WEBSITE GUIDE:
+1. HOW TO TRACK AN APPLICATION:
+   - Navigate to "My Applications" tab in the top navigation bar or visit the dashboard page (dashboard.html).
+   - All your submitted applications are listed with real-time status badges: "Approved" (Green), "Under Review" / "Pending" (Orange), or "Rejected" (Red).
+   - You can use the filter buttons to view Approved, Pending, or Rejected applications.
+   - Click the "Track Status" button on any application card to see the latest progress update.
+
+2. HOW TO APPLY FOR A CERTIFICATE:
+   - Click "Apply" in the top navigation or visit apply.html.
+   - Step 1: Select the certificate type you need: Income Certificate, Birth Certificate, or Domicile Certificate.
+   - Step 2: Fill in the required applicant details (Name as on Aadhaar, Contact Number, Aadhaar, PAN / Parent info / Address).
+   - Step 3: Select your employment category or child/residency details.
+   - Step 4: Upload clear scanned copies of required documents (JPG, PNG, or PDF format, maximum 5MB each).
+   - Step 5: Click "Submit & Verify Application". The automated digital verification system will process your application and give you an instant decision or route it to an officer for review.
+
+3. HOW TO DOWNLOAD AN APPROVED CERTIFICATE:
+   - Go to "My Applications" (dashboard.html).
+   - Locate your approved application card.
+   - Click the green "⬇️ Download Certificate" button to download your official digitally signed PDF certificate with a verifiable QR code.
+
+4. REQUIRED DOCUMENTS BY CATEGORY:
+   - Income Certificate:
+     * Salaried Employees: Aadhaar Card + Latest Salary Slip / Form 16.
+     * Farmers / Agricultural: Aadhaar Card + 7/12 Land Extract (सातबारा उतारा / 8A Extract) or Talathi Agricultural Income Report.
+     * Self-Employed / Business: Aadhaar Card + ITR-V Acknowledgment / Form 26AS / P&L Statement.
+     * Daily Wage / Informal: Aadhaar Card + Talathi / Tahsildar Income Affidavit (स्वयंघोषणापत्र) or BPL Ration Card.
+   - Birth Certificate: Hospital Discharge Summary or Municipal Birth Record + Parent Aadhaar Card.
+   - Domicile Certificate: Aadhaar Card + Address Proof (Voter ID / Utility Bill / Passport) + 15+ years residency proof (School Leaving Certificate, old utility bills).
+
+5. PROCESSING TIMELINES & FEES:
+   - Income Certificate: 24 to 48 hours.
+   - Birth Certificate: 24 to 72 hours.
+   - Domicile Certificate: 2 to 5 working days.
+   - Fees: Nil / Nominal Government e-Governance charge.
+
+6. CONTACT & HELPLINE:
+   - Toll-Free Citizen Helpline: 1800-XXX-XXXX (Monday to Saturday, 9:00 AM – 6:00 PM).
+   - Physical visit to government revenue offices is NOT required; the entire process is online.
+`;
+
+// ─────────────────────────────────────────────────────────────
+// RAG Q&A Handler — Zero Hallucination Policy & Portal Assistant
+// POST /api/chat/rag-query
+// ─────────────────────────────────────────────────────────────
+exports.ragQuery = async (req, res) => {
+  try {
+    const { question, user_id, user_name } = req.body;
+    if (!question || question.trim().length < 2) {
+      return res.status(400).json({ answer: "Please ask a question about government certificate eligibility, portal navigation, or your applications." });
+    }
+
+    // ── 1. Check if user is logged in & fetch their applications from Database ──
+    let userApplicationsContext = "User Status: Citizen is not logged in or has not submitted applications yet.";
+    let userApps = [];
+
+    if (user_id) {
+      try {
+        userApps = await Application.find({ user_id }).sort({ createdAt: -1 }).limit(10);
+        if (userApps && userApps.length > 0) {
+          const appSummaries = userApps.map((a, idx) => {
+            const service = a.service_type ? a.service_type.replace(/_/g, " ").toUpperCase() : "CERTIFICATE";
+            const dateStr = a.createdAt ? new Date(a.createdAt).toLocaleDateString("en-IN") : "Recently";
+            const statusStr = a.status || "Pending";
+            const incomeStr = a.extracted_income ? `Annual Income: ₹${a.extracted_income.toLocaleString("en-IN")}` : (a.entered_income ? `Declared Income: ₹${a.entered_income}` : "");
+            const certStr = a.certificate_url ? `[Certificate Available for Download: ${a.certificate_url}]` : "No certificate issued yet.";
+            const childStr = a.child_name ? `Child Name: ${a.child_name}, DOB: ${a.dob}` : "";
+            const domStr = a.dc_full_name ? `Applicant: ${a.dc_full_name}, Duration: ${a.dc_duration_years} years` : "";
+            const noteStr = a.officer_note ? `Officer Remark: "${a.officer_note}"` : "";
+
+            return `${idx + 1}. [${service}] Application ID: ${a._id} | Status: ${statusStr} | Applied: ${dateStr} | ${incomeStr || childStr || domStr} | ${certStr} ${noteStr}`.trim();
+          });
+
+          userApplicationsContext = `LOGGED-IN CITIZEN INFORMATION:
+Citizen Name: ${user_name || "Citizen"}
+User ID: ${user_id}
+Total Applications Submitted: ${userApps.length}
+Applications History:
+${appSummaries.join("\n")}`;
+        } else {
+          userApplicationsContext = `LOGGED-IN CITIZEN INFORMATION:
+Citizen Name: ${user_name || "Citizen"}
+User ID: ${user_id}
+Status: Citizen is logged in but has not submitted any certificate applications yet.`;
+        }
+      } catch (dbErr) {
+        console.warn("[RAG] Error fetching user applications from database:", dbErr.message);
+      }
+    }
+
+    // ── 2. Retrieve relevant policy clauses via RAG ──
+    const domain = detectDomain(question);
+    const domains = domain ? [domain] : ["income", "domicile", "birth"];
+
+    const allClauses = [];
+    for (const d of domains) {
+      try {
+        const clauses = retrieveRelevantClauses(question, d, { topK: 3, minScore: 0.05 });
+        allClauses.push(...clauses.map(c => ({ ...c, domain: d })));
+      } catch (e) {}
+    }
+
+    const seen = new Set();
+    const topClauses = allClauses
+      .filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    const policyContextText = topClauses.length
+      ? topClauses.map((c, i) => `[CLAUSE ${i+1}] ${c.breadcrumb ? `(${c.breadcrumb}) ` : ""}${c.heading}\n${c.content}`).join("\n\n---\n\n")
+      : "No specific statutory policy clauses matched for this query.";
+
+    // ── 3. Construct System Prompt with Portal Knowledge + User DB + Policy RAG ──
+    const systemPrompt = `You are GovSahayak Assistant, the official Government of India e-Services and Certificate Portal Assistant.
+
+You have access to:
+1. LIVE DATABASE STATUS of the logged-in citizen's applications.
+2. PORTAL & WEBSITE GUIDE (How to track, how to apply, how to download certificates, required documents, helpline).
+3. OFFICIAL REVENUE & REGISTRATION POLICY CLAUSES (Income, Domicile, and Birth certificate rules).
+
+RULES OF CONDUCT:
+1. If the citizen asks about their personal application (e.g. "track my application", "what is my status", "where is my certificate", "show my applications", "is my income certificate approved"):
+   - If user is logged in with applications: Give them a clear, polite summary of their actual application(s) from the database, including Application ID, Status, and date. If approved, let them know they can download the certificate from the "My Applications" page.
+   - If user is logged in with NO applications: Inform them they have not submitted any applications yet and guide them to the "Apply" page.
+   - If user is NOT logged in: Explain how to track via the "My Applications" tab (dashboard.html) and politely encourage them to log in to view their specific application status.
+
+2. If the citizen asks general portal/website questions (e.g. "how can I track", "how do I apply", "what is the helpline", "processing time", "how to download"):
+   - Explain the exact steps clearly using the PORTAL & WEBSITE GUIDE.
+
+3. If the citizen asks eligibility / policy questions (e.g. "income limit for EWS", "documents for farmer", "residency years for domicile", "birth certificate delay"):
+   - Answer accurately based on the OFFICIAL POLICY CLAUSES and cite the specific section/rule.
+   - Do NOT invent fake eligibility limits or rules not in the policy clauses.
+
+4. Tone: Professional, courteous, helpful, and citizen-friendly. Use formatting (bullet points, bold highlights) for readability. Do NOT expose internal software engineering terms (e.g. do not say "RAG", "LLM", "Groq", "MongoDB", "vector embeddings"). Speak as the official government portal assistant.`;
+
+    const userPrompt = `LIVE USER APPLICATION DATABASE CONTEXT:
+${userApplicationsContext}
+
+PORTAL & WEBSITE KNOWLEDGE BASE:
+${PORTAL_KNOWLEDGE}
+
+OFFICIAL STATUTORY POLICY CLAUSES:
+${policyContextText}
+
+CITIZEN QUERY:
+"${question}"
+
+Provide a clear, helpful, and accurate response:`;
+
+    const completion = await createChatCompletion({
+      temperature: 0,
+      max_tokens: 700,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user",   content: userPrompt }
+      ]
+    });
+
+    const answer = completion.choices[0].message.content || "I am currently unable to retrieve an answer. Please contact the helpdesk.";
+
+    // Only attach citations if policy clauses were actually retrieved and query is policy-related
+    const isGeneralOrTrack = /track|how to|where to|my application|login|apply|download|dashboard|help|status|hello|hi/i.test(question) && !/ews|creamy|limit|threshold|rule|act|section|law/i.test(question);
+    const citations = isGeneralOrTrack ? [] : topClauses.map(c => ({
+      section: c.heading,
+      breadcrumb: c.breadcrumb || "",
+      domain: c.domain,
+      score: c.score
+    }));
+
+    return res.json({ answer, citations });
+
+  } catch (error) {
+    console.error("RAG Query error:", error.message);
+    return res.status(500).json({
+      answer: "I apologise — I could not process your query at this moment. Please try again or visit the My Applications page.",
+      citations: []
+    });
+  }
+};
 
 function getFinancialYear() {
   const now = new Date();
@@ -242,25 +441,25 @@ exports.chat = async (req, res) => {
       }
       // ── End mid-flow escape hatch ───────────────────────────
 
-      // ── Income Certificate flow (unchanged) ──────────────
+      // ── Income Certificate flow ──────────────
       if (pending.status === "waiting_for_name") {
         pending.name_from_chat = message;
         pending.status = "waiting_for_mobile";
         await pending.save();
-        return res.json({ reply: "Thank you. Please enter your Mobile Number." });
+        return res.json({ reply: `Got it, ${message}! Could you please share your 10-digit Mobile Number so we can keep you updated on your application status?` });
       }
       if (pending.status === "waiting_for_mobile") {
         pending.mobile_from_chat = message;
         pending.status = "waiting_for_income";
         await pending.save();
-        return res.json({ reply: "Thank you. Please enter your annual Income." });
+        return res.json({ reply: "Thank you! Could you please tell me your estimated Annual Income as per your salary slip or income proof?" });
       }
       if (pending.status === "waiting_for_income") {
         pending.entered_income = message;
         pending.status = "waiting_for_documents";
         await pending.save();
         return res.json({
-          reply: "I'll help you get your income certificate. Please upload your Aadhaar card and income proof.",
+          reply: "Wonderful! Your basic application details are saved. Please click the button below to upload your Aadhaar Card and Income/Salary Proof for real-time GovSahayak AI verification.",
           application_id: pending._id.toString(),
           show_upload_button: true
         });
@@ -486,8 +685,7 @@ exports.chat = async (req, res) => {
     }
 
     // ── No pending app — detect intent ─────────────────────
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
+    const completion = await createChatCompletion({
       temperature: 0,
       messages: [
         {
@@ -516,7 +714,7 @@ Return: {"intent":"intent_name"}`
 
     if (intent === "greeting") {
       return res.json({
-        reply: "Hello! I am SenateBot. I can help you apply for an Income Certificate, Birth Certificate, or Domicile Certificate. Please tell me which certificate you need."
+        reply: "Hello! Welcome to GovSahayak, your official e-Governance AI assistant. I'm here to assist you with applying for an Income Certificate, Birth Certificate, or Domicile Certificate. Which certificate would you like to apply for today?"
       });
     }
 
@@ -529,7 +727,7 @@ Return: {"intent":"intent_name"}`
       });
       if (approved) {
         return res.json({
-          reply: `You already have an approved income certificate for financial year ${currentFY}. You can download it from My Applications tab.`,
+          reply: `You already have an approved Income Certificate for financial year ${currentFY}. You can view and download it anytime from the 'My Applications' tab.`,
           application_id: approved._id.toString(),
           certificate_url: approved.certificate_url || null,
           already_approved: true
@@ -542,7 +740,7 @@ Return: {"intent":"intent_name"}`
         financial_year: currentFY
       });
       return res.json({
-        reply: "Please enter your Name.",
+        reply: "I'd be glad to help you apply for an Income Certificate! To get started, could you please enter your Full Name as it appears on your official documents?",
         application_id: app._id.toString(),
         show_upload_button: false
       });

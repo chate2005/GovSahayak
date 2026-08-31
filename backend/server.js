@@ -3,6 +3,7 @@ require("./config/db");
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const authRoutes = require("./routes/authRoutes");
 const chatRoutes = require("./routes/chatRoutes");
@@ -19,6 +20,9 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+// Serve the web portal static files
+app.use("/portal", express.static(path.join(__dirname, "../portal")));
+
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/income", incomeRoutes);
@@ -27,6 +31,21 @@ app.use("/api/domicile", domicileRoutes);
 app.use("/api/officer", officerRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/otp", otpRoutes);
+
+// Health check endpoints (for Render, UptimeRobot, keep-alive monitors)
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK", uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "OK", uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    message: "GovSahayak API Server is live & running!",
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Catch 404
 app.use((req, res, next) => {

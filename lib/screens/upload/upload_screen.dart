@@ -187,7 +187,7 @@ class _UploadScreenState extends State<UploadScreen> {
                 border: Border.all(color: Colors.blue[200]!),
               ),
               child: const Text(
-                "ℹ️ Your income will be scanned automatically. If annual income is below ₹8,00,000 your certificate will be approved instantly.",
+                "ℹ️ GovSahayak AI is verifying your eligibility and uploaded documents in real-time according to official government standards.",
                 style: TextStyle(fontSize: 12, color: Colors.blue),
               ),
             ),
@@ -239,6 +239,32 @@ class _UploadScreenState extends State<UploadScreen> {
                     ),
 
                     const SizedBox(height: 12),
+
+                    // Official Notice Disclaimer
+                    if (_resultStatus == "approved") ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.green[100]?.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green[300]!),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.verified_user, size: 18, color: Color(0xFF2E7D32)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Official Notice: This certificate has been issued under the standard government verification framework based on authentic documents and e-KYC credentials submitted by you.",
+                                style: TextStyle(fontSize: 11, color: Color(0xFF1B5E20), height: 1.35),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
 
                     // Download approved certificate
                     if (_resultStatus == "approved" &&

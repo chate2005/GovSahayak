@@ -18,8 +18,14 @@ const stringSimilarity = require("string-similarity");
 const PDFDocument = require("pdfkit");
 const cloudinary = require("cloudinary").v2;
 const { Readable } = require("stream");
+const Tesseract = require("tesseract.js");
+const { groq, createChatCompletion } = require("../services/aiHelper");
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// ─── RAG + LLM Architecture Integration ─────────────────────────────────────
+const { verifyDomicileApplication, CONFIDENCE_AUTO_APPROVE } = require("../services/llmVerificationAgent");
+
+// ─── Document Authenticity Service (Multi-Source Residency & Address Verifier) ─
+const { verifyDomicileDocumentsAuthenticity } = require("../services/mockResidencyVerificationPortal");
 const MAX_RETRIES = 3;
 const MIN_AUTO_CONFIDENCE = 85;
 const MIN_OCR_CONFIDENCE = 55;
@@ -94,7 +100,7 @@ function lookupJurisdiction(pin) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Step 5 + 6 — Groq Vision OCR functions
+// Step 5 + 6 — Tesseract OCR + Groq JSON Parser functions
 // ─────────────────────────────────────────────────────────────
 
 async function extractAadhaarForDomicile(fileUrl) {
@@ -103,21 +109,24 @@ async function extractAadhaarForDomicile(fileUrl) {
     if (lowerUrl.includes(".pdf") || (lowerUrl.includes("raw/upload") && !lowerUrl.match(/\.(jpg|jpeg|png)(\?|$)/i))) {
       return { error: "PDF Aadhaar cannot be scanned. Please upload JPG or PNG." };
     }
-    const { base64, mimeType } = await urlToBase64(fileUrl);
-    const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    const { data: { text } } = await Tesseract.recognize(fileUrl, 'eng');
+    const completion = await createChatCompletion({
       temperature: 0,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
-          {
-            type: "text",
-            text: `This is an Aadhaar card issued by UIDAI (India). Extract and reply ONLY this JSON:
+      messages: [
+        {
+          role: "system",
+          content: "You are an Indian Aadhaar card OCR data extractor. Extract structured fields from raw OCR text. Reply ONLY valid JSON."
+        },
+        {
+          role: "user",
+          content: `Raw OCR Text:
+"${text}"
+
+Extract and reply ONLY this JSON:
 {
   "is_aadhaar": true,
   "name": "Full Name",
-  "aadhaar_last4": "9012",
+  "aadhaar_last4": "4 digits",
   "dob": "DD/MM/YYYY",
   "house_no": "House/Flat number",
   "street": "Street/Area/Locality",
@@ -128,14 +137,10 @@ async function extractAadhaarForDomicile(fileUrl) {
   "ocr_confidence": 85,
   "quality_issues": []
 }
-IMPORTANT: Set is_aadhaar to true if you can see UIDAI, Aadhaar logo, or an Indian government ID with name and date of birth.
-Always attempt to extract all fields even if the image is slightly imperfect or at an angle.
-Only add to quality_issues (e.g. "blurry", "tampered") if the text is COMPLETELY unreadable - do NOT flag normal photos as blurry.
-Set unknown fields to null.
-If this is clearly NOT an Aadhaar card (e.g. a random photo, different document), reply: {"is_aadhaar": false}`
-          }
-        ]
-      }]
+If text contains Aadhaar logo, Govt of India, UIDAI, 12-digit number, set is_aadhaar to true.
+If NOT Aadhaar, reply: {"is_aadhaar": false}`
+        }
+      ]
     });
     const raw = completion.choices[0].message.content;
     const match = raw.match(/\{[\s\S]*\}/);
@@ -151,20 +156,21 @@ async function extractAddressProof(fileUrl) {
     const lowerUrl = fileUrl.toLowerCase();
     const isPdf = lowerUrl.includes(".pdf") || (lowerUrl.includes("raw/upload") && !lowerUrl.match(/\.(jpg|jpeg|png)(\?|$)/i));
     if (isPdf) {
-      // For PDFs we return a partial result indicating manual review
       return { is_address_doc: true, name: null, address: null, issue_date: null, doc_type: "PDF Document", ocr_confidence: 65, quality_issues: [] };
     }
-    const { base64, mimeType } = await urlToBase64(fileUrl);
-    const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    const { data: { text } } = await Tesseract.recognize(fileUrl, 'eng');
+    const completion = await createChatCompletion({
       temperature: 0,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
-          {
-            type: "text",
-            text: `This is an address proof document (Voter ID, Electricity Bill, Ration Card, Passport, Rent Agreement, etc).
+      messages: [
+        {
+          role: "system",
+          content: "You are an address document OCR data extractor. Extract structured fields from raw OCR text. Reply ONLY valid JSON."
+        },
+        {
+          role: "user",
+          content: `Raw OCR Text:
+"${text}"
+
 Extract and reply ONLY this JSON:
 {
   "is_address_doc": true,
@@ -179,12 +185,9 @@ Extract and reply ONLY this JSON:
   "ocr_confidence": 85,
   "quality_issues": []
 }
-quality_issues: "blurry", "cropped", "tampered", "low_resolution"
-If NOT an address document reply: {"is_address_doc": false}
-Set unknown fields to null.`
-          }
-        ]
-      }]
+If NOT an address document, reply: {"is_address_doc": false}`
+        }
+      ]
     });
     const raw = completion.choices[0].message.content;
     const match = raw.match(/\{[\s\S]*\}/);
@@ -202,17 +205,19 @@ async function extractResidencyProof(fileUrl) {
     if (isPdf) {
       return { is_residency_doc: true, name: null, address: null, issue_year: null, doc_type: "PDF Document", ocr_confidence: 65, quality_issues: [] };
     }
-    const { base64, mimeType } = await urlToBase64(fileUrl);
-    const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    const { data: { text } } = await Tesseract.recognize(fileUrl, 'eng');
+    const completion = await createChatCompletion({
       temperature: 0,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
-          {
-            type: "text",
-            text: `This is a long-term residency proof document (School/College Leaving Certificate, Old Ration Card, Property Tax Receipt, Old Electricity Bills, Bank Passbook, Voter ID).
+      messages: [
+        {
+          role: "system",
+          content: "You are a residency proof document OCR data extractor. Extract structured fields from raw OCR text. Reply ONLY valid JSON."
+        },
+        {
+          role: "user",
+          content: `Raw OCR Text:
+"${text}"
+
 Extract and reply ONLY this JSON:
 {
   "is_residency_doc": true,
@@ -224,12 +229,9 @@ Extract and reply ONLY this JSON:
   "ocr_confidence": 85,
   "quality_issues": []
 }
-quality_issues: "blurry", "cropped", "tampered", "low_resolution"
-If NOT a residency document reply: {"is_residency_doc": false}
-Set unknown fields to null.`
-          }
-        ]
-      }]
+If NOT a residency document, reply: {"is_residency_doc": false}`
+        }
+      ]
     });
     const raw = completion.choices[0].message.content;
     const match = raw.match(/\{[\s\S]*\}/);
@@ -708,26 +710,103 @@ async function runDomicileValidation(app, res) {
     }
   }
 
-  // ── STEP 10: Final Decision ───────────────────────────────
+  // ── STEP 9.5: Document Authenticity Verification (DISCOM, PDS, BMC, EPIC, SARATHI) ──
+  let docAuthReport = null;
+  try {
+    docAuthReport = await verifyDomicileDocumentsAuthenticity(
+      aadhaarOcr,
+      addrOcr,
+      residOcr,
+      app
+    );
+    app.document_authenticity_report = docAuthReport;
+
+    if (docAuthReport.all_flags && docAuthReport.all_flags.length > 0) {
+      flags.push(...docAuthReport.all_flags);
+    }
+  } catch (authErr) {
+    console.error("[Domicile] Document authenticity error (non-fatal):", authErr.message);
+  }
+
+  // ── STEP 10: Final Decision — RAG + LLM Verification Agent ─────────────
 
   app.dc_flags = flags;
 
-  // Compute overall confidence
+  // Compute base OCR confidence
   const aadhaarConf = aadhaarOcr.ocr_confidence || 80;
   const addrConf = addrOcr.ocr_confidence || 80;
   const residConf = residOcr.ocr_confidence || 80;
   let avgConfidence = Math.round((aadhaarConf + addrConf + residConf) / 3);
-  // Deduct for each flag
   avgConfidence = Math.max(0, avgConfidence - flags.length * 10);
   app.dc_confidence_score = avgConfidence;
 
-  // Risk level
+  // Risk level (pre-LLM estimate, LLM may override)
   if (flags.length === 0) app.dc_risk_level = "LOW";
   else if (flags.length === 1) app.dc_risk_level = "MEDIUM";
   else app.dc_risk_level = "HIGH";
 
-  // Case A: Auto-approve
-  if (flags.length === 0 && avgConfidence >= MIN_AUTO_CONFIDENCE) {
+  // ── Invoke RAG + LLM Verification Agent ─────────────────────────────────
+  let auditReport = null;
+  try {
+    auditReport = await verifyDomicileApplication(app, {
+      aadhaar: aadhaarOcr,
+      address: addrOcr,
+      residency: residOcr,
+      flags
+    });
+
+    // Save LLM audit report and RAG citations to database
+    app.llm_audit_report = auditReport;
+    app.rag_citations = auditReport.rag_citations || [];
+    app.uidai_verified = auditReport.uidai_verified || false;
+
+    // Update confidence and risk from LLM
+    app.dc_confidence_score = auditReport.confidence;
+    app.dc_risk_level = auditReport.risk_level;
+
+    // Merge any additional flags from LLM agent
+    if (auditReport.flags_raised && auditReport.flags_raised.length > 0) {
+      const combinedFlags = [...new Set([...flags, ...auditReport.flags_raised])];
+      app.dc_flags = combinedFlags;
+    }
+  } catch (llmErr) {
+    // LLM failure is non-fatal — fallback to rule-based decision
+    console.error("[Domicile] LLM agent error (falling back to rule-based):", llmErr.message);
+    auditReport = null;
+  }
+
+  // ── Case A: LLM + RAG Auto-Approve (≥95% confidence, no critical flags) ─
+  if (auditReport?.auto_decision_possible === true && flags.length === 0) {
+    const certUrl = await generateDomicileCertificate(app);
+    app.certificate_url = certUrl;
+    app.status = "approved";
+    await app.save();
+    return res.json({
+      status: "approved",
+      message: `🎉 Congratulations! Your Domicile Certificate has been generated.\nCertificate ID: DC-${app._id.toString().toUpperCase().slice(-8)}-${new Date().getFullYear()}\nDownload your certificate below.`,
+      certificate_url: certUrl,
+      rag_verified: true,
+      uidai_verified: app.uidai_verified,
+      llm_confidence: auditReport.confidence
+    });
+  }
+
+  // ── Case B: LLM Hard Reject ──────────────────────────────────────────────
+  if (auditReport?.decision === "REJECT") {
+    app.status = "rejected";
+    await app.save();
+    return res.json({
+      status: "rejected",
+      message: `❌ Your Domicile Certificate application has been rejected.\n\nReason: ${auditReport.reasoning || "Application does not meet eligibility criteria."}`,
+      flags: app.dc_flags,
+      risk_level: app.dc_risk_level,
+      legal_citations: auditReport.legal_citations || [],
+      confidence: auditReport.confidence
+    });
+  }
+
+  // ── Case C: Fallback — Rule-based auto-approve (LLM unavailable) ─────────
+  if (!auditReport && flags.length === 0 && avgConfidence >= MIN_AUTO_CONFIDENCE) {
     const certUrl = await generateDomicileCertificate(app);
     app.certificate_url = certUrl;
     app.status = "approved";
@@ -739,7 +818,7 @@ async function runDomicileValidation(app, res) {
     });
   }
 
-  // Case B: Officer review (partial match or flags)
+  // ── Case D: Officer Review (all other cases) ─────────────────────────────
   const jurisdictionInfo = lookupJurisdiction(app.dc_pin || "");
   const officerDistrict = jurisdictionInfo
     ? `${jurisdictionInfo.district} SDM office`
@@ -748,15 +827,20 @@ async function runDomicileValidation(app, res) {
   app.status = "sent_to_officer";
   await app.save();
 
-  const reason = flags.length >= 2
+  const reason = (app.dc_flags?.length || 0) >= 2
     ? "PRIORITY REVIEW required — multiple flags raised."
+    : auditReport?.officer_guidance
+    ? "Officer review required: " + auditReport.officer_guidance.slice(0, 120)
     : "Additional verification required.";
 
   return res.json({
     status: "sent_to_officer",
     message: `📋 Your application has been submitted for review. ${reason}\nSent to: ${officerDistrict}.\nExpected time: 3-5 working days.`,
-    flags,
+    flags: app.dc_flags,
     risk_level: app.dc_risk_level,
-    confidence: avgConfidence,
+    confidence: app.dc_confidence_score,
+    rag_verified: !!auditReport,
+    uidai_verified: app.uidai_verified,
+    legal_citations: auditReport?.legal_citations || []
   });
 }
