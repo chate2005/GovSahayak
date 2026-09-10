@@ -35,8 +35,28 @@
     </p>
     <div class="hero-cta-group">
       <a href="apply.html" class="btn btn-saffron btn-lg">📋 Apply Now</a>
-      <a href="login.html" class="btn btn-outline-white btn-lg">🔐 Citizen Login</a>
+      <a href="javascript:void(0)" onclick="window.openTrackModal()" class="btn btn-outline-white btn-lg">🔍 Track Status</a>
+      <a id="hero-login-btn" href="login.html" class="btn btn-outline-white btn-lg">🔐 Citizen Login</a>
+      <a id="hero-dash-btn" href="dashboard.html" class="btn btn-outline-white btn-lg" style="display:none;">📁 My Applications</a>
     </div>
+    <script>
+      (function() {
+        const token = localStorage.getItem('gov_token');
+        const role = localStorage.getItem('gov_role');
+        const loginBtn = document.getElementById('hero-login-btn');
+        const dashBtn = document.getElementById('hero-dash-btn');
+        if (token) {
+          if (loginBtn) loginBtn.style.display = 'none';
+          if (dashBtn) {
+            dashBtn.style.display = 'inline-flex';
+            if (role === 'officer') {
+              dashBtn.href = 'officer.html';
+              dashBtn.innerHTML = '👮 Officer Dashboard';
+            }
+          }
+        }
+      })();
+    </script>
     <div class="hero-stats">
       <div class="hero-stat-item">
         <span class="hero-stat-num">95%</span>

@@ -129,6 +129,8 @@
     launcher.querySelector('.launcher-icon').textContent = '💬';
   }
 
+  window.openChatbot = openWindow;
+  window.toggleChatbot = toggleWindow;
   function clearMessages() {
     const msgs = document.getElementById('chatbot-messages');
     msgs.innerHTML = `

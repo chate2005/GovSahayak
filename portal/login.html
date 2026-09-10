@@ -204,6 +204,13 @@
 <div id="toast-container"></div>
 <script src="js/api.js"></script>
 <script>
+  // ── Redirect if already authenticated ─────────────────
+  const existingToken = localStorage.getItem('gov_token');
+  if (existingToken) {
+    const existingRole = localStorage.getItem('gov_role');
+    window.location.replace(existingRole === 'officer' ? 'officer.html' : 'dashboard.html');
+  }
+
   // ── Tab / mode switching ──────────────────────────────
   function switchTab(tab) {
     document.getElementById('citizen-section').style.display = tab === 'citizen' ? '' : 'none';
