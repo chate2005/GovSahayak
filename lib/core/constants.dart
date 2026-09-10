@@ -1,3 +1,3 @@
 class AppConstants {
-  static const String baseUrl = "http://localhost:5001";
+  static const String baseUrl = "https://web-production-f9d9c.up.railway.app";
 }

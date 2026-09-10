@@ -10,8 +10,8 @@
 // 3. Local development fallback (localhost:5001)
 // 4. Production backend URL
 const DEFAULT_LOCAL_API = 'http://localhost:5001/api';
-// REPLACE THIS with your deployed Render / Koyeb backend URL:
-const PRODUCTION_API = window.PROD_API_URL || 'https://govsahayak-backend.onrender.com/api';
+// Connected to live Railway backend:
+const PRODUCTION_API = window.PROD_API_URL || 'https://web-production-f9d9c.up.railway.app/api';
 
 const isLocalhost = Boolean(
   window.location.hostname === 'localhost' ||
