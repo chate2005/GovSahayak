@@ -1,0 +1,11 @@
+# Force Nixpacks to treat this repository as a Node.js backend (ignores Flutter pubspec.yaml)
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["npm install --prefix backend"]
+
+[start]
+cmd = "node backend/server.js"
