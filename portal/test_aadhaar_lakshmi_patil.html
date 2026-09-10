@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aadhaar Card - Lakshmi Patil</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .aadhaar-card {
+      width: 750px;
+      height: 470px;
+      background: #ffffff;
+      border: 2px solid #b0bec5;
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      padding: 18px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    /* Subtle Guilloche pattern background */
+    .aadhaar-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(255, 235, 204, 0.35) 0%, rgba(240, 248, 255, 0.4) 100%);
+      pointer-events: none;
+    }
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #d32f2f;
+      padding-bottom: 10px;
+      position: relative;
+      z-index: 2;
+    }
+    .emblem-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .emblem-svg {
+      width: 46px;
+      height: 60px;
+    }
+    .header-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .header-text .hindi {
+      font-size: 20px;
+      font-weight: bold;
+      color: #1a1a1a;
+      letter-spacing: 0.5px;
+    }
+    .header-text .english {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+    .aadhaar-logo {
+      width: 65px;
+      height: 52px;
+    }
+
+    /* Main Body */
+    .card-body {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+      margin-top: 10px;
+      flex: 1;
+    }
+    .photo-frame {
+      width: 135px;
+      height: 165px;
+      border: 2px solid #546e7a;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #eceff1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .details {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+    .name-hindi {
+      font-size: 22px;
+      font-weight: 700;
+      color: #111;
+    }
+    .name-eng {
+      font-size: 24px;
+      font-weight: 800;
+      color: #000;
+      letter-spacing: 0.5px;
+    }
+    .dob-row, .gender-row {
+      font-size: 17px;
+      font-weight: 600;
+      color: #263238;
+      margin-top: 4px;
+    }
+    .qr-box {
+      width: 135px;
+      height: 135px;
+      border: 1px solid #cfd8dc;
+      padding: 6px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      flex-shrink: 0;
+    }
+    .qr-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Footer */
+    .card-footer {
+      border-top: 2px solid #d32f2f;
+      padding-top: 10px;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+    }
+    .aadhaar-number {
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 6px;
+      color: #000;
+      font-family: 'Courier New', Courier, monospace;
+      margin-bottom: 4px;
+    }
+    .slogan {
+      font-size: 15px;
+      font-weight: 700;
+      color: #d32f2f;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="aadhaar-card" id="aadhaar-card">
+    <!-- Header -->
+    <div class="header">
+      <div class="emblem-box">
+        <!-- Ashoka Emblem SVG -->
+        <svg class="emblem-svg" viewBox="0 0 100 130">
+          <circle cx="50" cy="30" r="18" fill="#c99738" opacity="0.3"/>
+          <path d="M50 15 L56 25 L68 26 L59 34 L62 46 L50 39 L38 46 L41 34 L32 26 L44 25 Z" fill="#b7791f"/>
+          <rect x="35" y="52" width="30" height="24" rx="4" fill="#8c6218"/>
+          <rect x="25" y="80" width="50" height="12" rx="3" fill="#b7791f"/>
+          <circle cx="50" cy="86" r="4" fill="#002060"/>
+          <text x="50" y="112" font-size="14" font-weight="bold" fill="#000" text-anchor="middle" font-family="Arial">सत्यमेव जयते</text>
+        </svg>
+        <div class="header-text">
+          <div class="hindi">भारत सरकार</div>
+          <div class="english">Government of India</div>
+        </div>
+      </div>
+      <!-- Aadhaar Sun Logo -->
+      <svg class="aadhaar-logo" viewBox="0 0 100 80">
+        <path d="M50 10 Q35 25 20 40 Q35 55 50 70 Q65 55 80 40 Q65 25 50 10 Z" fill="#e65100"/>
+        <circle cx="50" cy="40" r="14" fill="#ffd54f"/>
+        <path d="M50 5 L50 75 M15 40 L85 40 M25 15 L75 65 M25 65 L75 15" stroke="#e65100" stroke-width="3"/>
+      </svg>
+    </div>
+
+    <!-- Body -->
+    <div class="card-body">
+      <!-- Portrait Photo -->
+      <div class="photo-frame">
+        <svg viewBox="0 0 120 150" width="120" height="150">
+          <rect width="120" height="150" fill="#e0e7ff"/>
+          <!-- Head & Hair -->
+          <ellipse cx="60" cy="55" rx="30" ry="36" fill="#fbcfe8"/>
+          <path d="M30 45 C30 20, 90 20, 90 45 C80 25, 40 25, 30 45 Z" fill="#1e293b"/>
+          <circle cx="60" cy="48" r="3" fill="#e11d48"/> <!-- Bindi -->
+          <!-- Eyes -->
+          <ellipse cx="48" cy="55" rx="3" ry="2" fill="#0f172a"/>
+          <ellipse cx="72" cy="55" rx="3" ry="2" fill="#0f172a"/>
+          <!-- Smile -->
+          <path d="M52 68 Q60 74 68 68" stroke="#be123c" stroke-width="2" fill="none"/>
+          <!-- Saree Drape / Shoulders -->
+          <path d="M15 150 C15 105, 40 95, 60 95 C80 95, 105 105, 105 150 Z" fill="#0284c7"/>
+          <path d="M40 95 Q60 120 85 150" stroke="#f59e0b" stroke-width="6" fill="none"/>
+        </svg>
+      </div>
+
+      <!-- Text Details -->
+      <div class="details">
+        <div class="name-hindi">लक्ष्मी पाटील</div>
+        <div class="name-eng">Lakshmi Patil</div>
+        <div class="dob-row">जन्म तारीख / DOB: <strong>27/07/1970</strong></div>
+        <div class="gender-row">महिला / Female</div>
+      </div>
+
+      <!-- QR Code Square -->
+      <div class="qr-box">
+        <svg class="qr-svg" viewBox="0 0 100 100">
+          <!-- QR matrix visual representation -->
+          <rect x="5" y="5" width="30" height="30" fill="#000"/>
+          <rect x="10" y="10" width="20" height="20" fill="#fff"/>
+          <rect x="15" y="15" width="10" height="10" fill="#000"/>
+
+          <rect x="65" y="5" width="30" height="30" fill="#000"/>
+          <rect x="70" y="10" width="20" height="20" fill="#fff"/>
+          <rect x="75" y="15" width="10" height="10" fill="#000"/>
+
+          <rect x="5" y="65" width="30" height="30" fill="#000"/>
+          <rect x="10" y="70" width="20" height="20" fill="#fff"/>
+          <rect x="15" y="75" width="10" height="10" fill="#000"/>
+
+          <!-- Random QR noise pattern -->
+          <rect x="42" y="12" width="6" height="6" fill="#000"/>
+          <rect x="52" y="20" width="6" height="6" fill="#000"/>
+          <rect x="40" y="42" width="6" height="6" fill="#000"/>
+          <rect x="52" y="42" width="6" height="6" fill="#000"/>
+          <rect x="62" y="50" width="6" height="6" fill="#000"/>
+          <rect x="72" y="62" width="6" height="6" fill="#000"/>
+          <rect x="42" y="72" width="6" height="6" fill="#000"/>
+          <rect x="56" y="80" width="6" height="6" fill="#000"/>
+          <rect x="80" y="40" width="6" height="6" fill="#000"/>
+          <rect x="85" y="75" width="8" height="8" fill="#000"/>
+          <rect x="45" y="60" width="8" height="6" fill="#000"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="card-footer">
+      <div class="aadhaar-number">2000 0000 0239</div>
+      <div class="slogan">मेरा आधार, मेरी पहचान</div>
+    </div>
+  </div>
+
+</body>
+</html>
