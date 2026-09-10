@@ -118,6 +118,52 @@ function seededRand(seed) {
 // Form 26AS Mock
 // ─────────────────────────────────────────────────────────────────────────────
 
+const MOCK_FORM_26AS_DATABASE = {
+  "AAPFU0939F": {
+    found: true,
+    source: "Form 26AS — TRACES Portal (Immutable Govt Record)",
+    pan: "AAPFU0939F",
+    financial_year: "2025-2026",
+    taxpayer_name: "Lakshmi Patil",
+    tds_records: [{
+      employer_tan: "PNEI00123D",
+      employer_name: "INNOVEX TECHNOLOGIES PRIVATE LIMITED",
+      section: "192 — Salary",
+      it_derived_annual_salary: 300000,
+      annual_tds_deducted: 0,
+      monthly_tds: 0,
+      quarterly_deposits: [
+        { quarter: "Q1 (Apr-Jun 2025)", tds_deposited: 0, status: "DEPOSITED" },
+        { quarter: "Q2 (Jul-Sep 2025)", tds_deposited: 0, status: "DEPOSITED" },
+        { quarter: "Q3 (Oct-Dec 2025)", tds_deposited: 0, status: "DEPOSITED" },
+        { quarter: "Q4 (Jan-Mar 2026)", tds_deposited: 0, status: "DEPOSITED" }
+      ]
+    }],
+    total_tds_for_year: 0,
+    note: "TDS deposited by employer INNOVEX TECHNOLOGIES PRIVATE LIMITED under Section 192. Annual Gross Salary ₹3,00,000 falls within zero-tax rebate limit."
+  }
+};
+
+const MOCK_ITR_DATABASE = {
+  "AAPFU0939F": {
+    found: true,
+    source: "ITR — e-Filing Portal (Immutable Govt Record)",
+    pan: "AAPFU0939F",
+    financial_year: "2025-2026",
+    itr_filed: true,
+    itr_form: "ITR-1 (Sahaj)",
+    acknowledgement_number: "AA2707197026",
+    filing_date: "15/07/2026",
+    taxpayer_name: "Lakshmi Patil",
+    employer_name: "INNOVEX TECHNOLOGIES PRIVATE LIMITED",
+    declared_salary_income: 300000,
+    declared_gross_total_income: 300000,
+    refund_claimed: false,
+    tax_paid: 0,
+    note: "ITR-1 filed for FY 2025-26. Declared gross salary income ₹3,00,000 (Systems Engineer at Innovex Technologies Private Limited)."
+  }
+};
+
 /**
  * fetchForm26AS(pan, financialYear)
  * ─────────────────────────────────────────────────────────────────────────────
@@ -137,6 +183,14 @@ function fetchForm26AS(pan, financialYear) {
       source: "Form 26AS — TRACES Portal",
       error: "Invalid PAN format. Cannot fetch Form 26AS.",
       flag: "INVALID_PAN_FOR_26AS"
+    };
+  }
+
+  const cleanPAN = pan.toUpperCase();
+  if (MOCK_FORM_26AS_DATABASE[cleanPAN]) {
+    return {
+      ...MOCK_FORM_26AS_DATABASE[cleanPAN],
+      financial_year: financialYear || MOCK_FORM_26AS_DATABASE[cleanPAN].financial_year
     };
   }
 
@@ -206,6 +260,14 @@ function fetchITRDetails(pan, financialYear) {
     return { found: false, error: "Invalid PAN" };
   }
 
+  const cleanPAN = pan.toUpperCase();
+  if (MOCK_ITR_DATABASE[cleanPAN]) {
+    return {
+      ...MOCK_ITR_DATABASE[cleanPAN],
+      financial_year: financialYear || MOCK_ITR_DATABASE[cleanPAN].financial_year
+    };
+  }
+
   const hash = seededRand(pan.toUpperCase() + "ITR" + (financialYear || "2025-2026"));
 
   // 75% chance ITR filed
@@ -262,6 +324,23 @@ function verifyEmployerTAN(tan, employerName) {
       reason: `Invalid TAN format: ${tan}. Expected: AAAA99999A`,
       flag: "INVALID_TAN_FORMAT",
       fraud_risk: "HIGH"
+    };
+  }
+
+  const cleanTAN = tan.toUpperCase();
+  const lowerEmp = (employerName || "").toLowerCase();
+
+  // Known mock employers
+  if (cleanTAN === "PNEI00123D" || lowerEmp.includes("innovex")) {
+    return {
+      valid: true,
+      tan: cleanTAN,
+      source: "TRACES — TAN Verification",
+      status: "ACTIVE",
+      registered_deductor_name: "INNOVEX TECHNOLOGIES PRIVATE LIMITED",
+      name_match: true,
+      flag: null,
+      fraud_risk: "LOW"
     };
   }
 

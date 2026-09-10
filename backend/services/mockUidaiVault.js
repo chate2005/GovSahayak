@@ -73,8 +73,26 @@ function seededRandom(seed) {
   return Math.abs(h);
 }
 
+const KNOWN_UIDAI_VAULT = {
+  "200000000239": {
+    firstName: "Lakshmi",
+    lastName: "Patil",
+    fullName: "Lakshmi Patil",
+    dob: "27/07/1970",
+    gender: "Female",
+    state: "Maharashtra",
+    district: "Pune",
+    houseNo: "Cyber One, Tower A",
+    street: "Magarpatta City, Hadapsar",
+    pin: "411028"
+  }
+};
+
 function generateMockDemographics(aadhaarNumber) {
   const cleaned = aadhaarNumber.replace(/\s/g, "");
+  if (KNOWN_UIDAI_VAULT[cleaned]) {
+    return { ...KNOWN_UIDAI_VAULT[cleaned] };
+  }
   const seed = seededRandom(cleaned);
   const stateIndex = seed % MOCK_STATES.length;
   const state = MOCK_STATES[stateIndex];

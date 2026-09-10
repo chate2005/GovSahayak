@@ -59,6 +59,27 @@ async function verifyPropertyTaxDocument(referenceId, applicantAadhaarLast4) {
     };
   }
 
+  // Known mock record for Lakshmi Patil (Aadhaar ending 0239)
+  if (applicantAadhaarLast4 === "0239") {
+    return {
+      verified: true,
+      issuer: ISSUERS.PROPERTY_TAX,
+      reference_id: referenceId,
+      record: {
+        registration_year: 2005,
+        years_on_record: new Date().getFullYear() - 2005,
+        owner_aadhaar_last4: "0239",
+        owner_name: "Lakshmi Patil",
+        property_type: "Residential",
+        city: "Pune",
+        state: "Maharashtra"
+      },
+      aadhaar_match: true,
+      flags: [],
+      confidence_boost: 15
+    };
+  }
+
   const hash = seededHash(referenceId + applicantAadhaarLast4);
   // ~80% of valid reference IDs resolve to a real record
   const recordFound = hash % 10 < 8;
@@ -114,6 +135,27 @@ async function verifyRationCard(rationCardNumber, applicantName, applicantState)
     };
   }
 
+  const lowerName = (applicantName || "").toLowerCase();
+  if (lowerName.includes("lakshmi") && lowerName.includes("patil")) {
+    return {
+      verified: true,
+      issuer: ISSUERS.RATION_CARD,
+      reference_id: rationCardNumber,
+      record: {
+        issuance_year: 2002,
+        years_active: new Date().getFullYear() - 2002,
+        state: "Maharashtra",
+        district: "Pune",
+        card_type: "APL",
+        holder_name: "Lakshmi Patil",
+        holder_name_match: true
+      },
+      name_match: true,
+      flags: [],
+      confidence_boost: 12
+    };
+  }
+
   const hash = seededHash(rationCardNumber + (applicantState || ""));
   const recordFound = hash % 10 < 9; // 90% chance record found
   const nameMatch = recordFound && (hash % 10 < 8); // 80% chance name matches
@@ -165,6 +207,28 @@ async function verifySchoolCertificate(certificateNumber, studentName, boardName
       issuer: ISSUERS.BOARD_CERTIFICATE,
       error: "Invalid certificate number",
       flags: ["DIGILOCKER_BOARD_CERT_INVALID"]
+    };
+  }
+
+  const lowerStudent = (studentName || "").toLowerCase();
+  if (lowerStudent.includes("lakshmi") && lowerStudent.includes("patil")) {
+    return {
+      verified: true,
+      issuer: ISSUERS.SCHOOL_LEAVING,
+      reference_id: certificateNumber,
+      record: {
+        pass_year: 1986,
+        years_since_pass: new Date().getFullYear() - 1986,
+        board: "Maharashtra State Board of Secondary and Higher Secondary Education, Pune",
+        certificate_type: "SSC (10th Standard)",
+        student_name: "Lakshmi Patil",
+        student_name_match: true,
+        qualifies_for_educational_exemption: true
+      },
+      name_match: true,
+      flags: [],
+      educational_exemption_eligible: true,
+      confidence_boost: 15
     };
   }
 
@@ -229,6 +293,28 @@ async function verifyBirthRegistration(registrationNumber, childName, dob, place
     };
   }
 
+  const lowerChild = (childName || "").toLowerCase();
+  if (lowerChild.includes("lakshmi") && lowerChild.includes("patil")) {
+    return {
+      verified: true,
+      issuer: ISSUERS.BIRTH_REGISTER,
+      reference_id: registrationNumber,
+      record: {
+        child_name: "Lakshmi Patil",
+        dob: "27/07/1970",
+        place_of_birth: placeOfBirth || "Pune, Maharashtra",
+        registration_days_after_birth: 5,
+        is_late_registration: false,
+        requires_magistrate_order: false,
+        name_match: true,
+        dob_match: true
+      },
+      name_match: true,
+      flags: [],
+      confidence_boost: 15
+    };
+  }
+
   const hash = seededHash(registrationNumber + (childName || "") + (dob || ""));
   const recordFound = hash % 10 < 7; // 70% chance found
   const detailsMatch = recordFound && (hash % 10 < 6);
@@ -282,6 +368,30 @@ async function verifyITReturn(panNumber, financialYear, declaredIncome) {
       issuer: ISSUERS.INCOME_TAX,
       error: "Invalid PAN number format",
       flags: ["DIGILOCKER_PAN_INVALID"]
+    };
+  }
+
+  const cleanPAN = panNumber.toUpperCase();
+
+  // Known mock record for Lakshmi Patil (Innovex Technologies)
+  if (cleanPAN === "AAPFU0939F") {
+    const targetIncome = 300000;
+    const isCloseMatch = !declaredIncome || Math.abs(targetIncome - declaredIncome) / targetIncome <= 0.15;
+    return {
+      verified: true,
+      issuer: ISSUERS.INCOME_TAX,
+      record: {
+        pan: "AAPFU0939F",
+        financial_year: financialYear || "2025-2026",
+        itr_income: targetIncome,
+        taxpayer_name: "Lakshmi Patil",
+        employer_name: "INNOVEX TECHNOLOGIES PRIVATE LIMITED",
+        income_match: isCloseMatch,
+        match_variance_percent: declaredIncome ? Math.round(Math.abs(targetIncome - declaredIncome) / declaredIncome * 100) : 0
+      },
+      income_match: true,
+      flags: [],
+      confidence_boost: 15
     };
   }
 

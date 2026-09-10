@@ -67,13 +67,28 @@ function seededRand(seed) {
 const MOCK_EPFO_MEMBER_DATABASE = {
   "100000000008": {
     member_name: "Lakshmi Patil",
-    employer_name: "TATA CONSULTANCY SERVICES LTD",
+    employer_name: "INNOVEX TECHNOLOGIES PRIVATE LIMITED",
+    employer_aliases: [
+      "INNOVEX TECHNOLOGIES PRIVATE LIMITED",
+      "Innovex Technologies Private Limited",
+      "Innovex Technologies Pvt Ltd",
+      "Innovex Technologies",
+      "TATA CONSULTANCY SERVICES LTD"
+    ],
     employer_epf_code: "MH/PUN/0012345/000",
     basic_salary: 15000,
     monthly_pf: 1800,
     annual_basic: 180000,
+    gross_salary: 25000,
+    annual_gross: 300000,
+    employee_id: "ITPL1234567",
+    designation: "Systems Engineer",
+    department: "Digital & Technology Services",
+    pan: "AAPFU0939F",
+    aadhaar_masked: "2000 XXXX 0239",
+    aadhaar_full: "200000000239",
     account_status: "ACTIVE",
-    joined_date: "15/07/2021"
+    joined_date: "15/06/2022"
   },
   "100000000015": {
     member_name: "Priya Joshi",
