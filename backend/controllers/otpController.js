@@ -1,4 +1,4 @@
-const OTP = require("../models/OTP");
+const OTP = require("../models/otp");
 const User = require("../models/User");
 const transactionalEmailsApi = require("../config/mailer");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
