@@ -58,6 +58,12 @@ const Auth = {
   loginOfficer: (payload) => request('POST', '/auth/login-officer', payload),
 };
 
+// ── OTP ───────────────────────────────────────────────
+const OTP = {
+  send:   (payload) => request('POST', '/otp/send',   payload),
+  verify: (payload) => request('POST', '/otp/verify', payload),
+};
+
 // ── Applications ──────────────────────────────────────
 const Applications = {
   getByUser: (userId) => request('GET', `/applications/user/${userId}`),
@@ -174,7 +180,7 @@ function formatDate(d) {
 }
 
 // expose globally
-window.API = { Auth, Applications, Income, Birth, Domicile, Officer, Chat, API_BASE };
+window.API = { Auth, OTP, Applications, Income, Birth, Domicile, Officer, Chat, API_BASE };
 window.govUtils = {
   saveAuth,
   clearAuth,

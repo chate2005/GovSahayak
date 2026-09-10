@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Department = require("../models/Department");
 const PasswordReset = require("../models/PasswordReset");
+const OTP = require("../models/OTP");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const transactionalEmailsApi = require("../config/mailer");
@@ -56,7 +57,9 @@ exports.register = async (req, res) => {
       });
     }
 
-    const exist = await User.findOne({ email: email.toLowerCase() });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const exist = await User.findOne({ email: normalizedEmail });
     if (exist) {
       return res.status(400).json({ message: "Email already registered" });
     }
@@ -66,17 +69,35 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "Phone number already registered" });
     }
 
+    // ── OTP Email Verification Guard ─────────────────────────────────────────
+    const verifiedOtp = await OTP.findOne({ email: normalizedEmail, verified: true });
+    if (!verifiedOtp) {
+      return res.status(400).json({
+        message: "Email not verified. Please verify the OTP sent to your email before completing registration."
+      });
+    }
+    if (new Date() > verifiedOtp.verified_expires_at) {
+      await OTP.deleteMany({ email: normalizedEmail });
+      return res.status(400).json({
+        message: "Email verification has expired. Please request a new OTP and verify again."
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const hashed = await bcrypt.hash(password, 10);
     const user = new User({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       password: hashed,
       phone,
       phone_verified: true,
+      email_verified: true,
       role: "user"
     });
 
     await user.save();
+    // Clean up verified OTP record now that registration is complete
+    await OTP.deleteMany({ email: normalizedEmail });
     console.log("User saved:", user._id);
 
     const token = jwt.sign(
@@ -149,7 +170,9 @@ exports.registerOfficer = async (req, res) => {
       });
     }
 
-    const exist = await User.findOne({ email: email.toLowerCase() });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const exist = await User.findOne({ email: normalizedEmail });
     if (exist) {
       return res.status(400).json({ message: "Email already registered" });
     }
@@ -159,19 +182,37 @@ exports.registerOfficer = async (req, res) => {
       return res.status(400).json({ message: "Phone number already registered" });
     }
 
+    // ── OTP Email Verification Guard ─────────────────────────────────────────
+    const verifiedOtp = await OTP.findOne({ email: normalizedEmail, verified: true });
+    if (!verifiedOtp) {
+      return res.status(400).json({
+        message: "Email not verified. Please verify the OTP sent to your email before completing registration."
+      });
+    }
+    if (new Date() > verifiedOtp.verified_expires_at) {
+      await OTP.deleteMany({ email: normalizedEmail });
+      return res.status(400).json({
+        message: "Email verification has expired. Please request a new OTP and verify again."
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const hashed = await bcrypt.hash(password, 10);
     const officer = new User({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       password: hashed,
       phone,
       phone_verified: true,
+      email_verified: true,
       role: "officer",
       department_id: department.department_id,
       department_name: department.department_name
     });
 
     await officer.save();
+    // Clean up verified OTP record now that registration is complete
+    await OTP.deleteMany({ email: normalizedEmail });
     console.log("Officer saved:", officer._id, department.department_name);
 
     const token = jwt.sign(

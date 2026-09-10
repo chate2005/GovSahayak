@@ -3,14 +3,13 @@ const User = require("../models/User");
 const transactionalEmailsApi = require("../config/mailer");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 
-
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 exports.sendOTP = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = (req.body.email || "").toLowerCase().trim();
 
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
@@ -21,42 +20,50 @@ exports.sendOTP = async (req, res) => {
       return res.status(400).json({ message: "Invalid email format" });
     }
 
+    // Block if email is already registered
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        message: "This email is already registered. Please login or reset your password."
+      });
+    }
+
     await OTP.deleteMany({ email });
 
     const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     await OTP.create({ email, otp, expires_at: expiresAt, verified: false });
 
     console.log(`OTP for ${email}: ${otp}`);
 
     const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-    sendSmtpEmail.subject = "Senate Bot — Email Verification OTP";
+    sendSmtpEmail.subject = "GovSahayak — Email Verification OTP";
     sendSmtpEmail.to = [{ email }];
     sendSmtpEmail.sender = {
       email: process.env.BREVO_FROM_EMAIL,
-      name: process.env.BREVO_FROM_NAME || "Senate Bot"
+      name: process.env.BREVO_FROM_NAME || "GovSahayak"
     };
     sendSmtpEmail.htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
-        <div style="background-color: #1A3C6E; padding: 20px; text-align: center;">
-          <h2 style="color: white; margin: 0;">Senate Bot</h2>
-          <p style="color: #ccc; margin: 5px 0;">Government Services Portal</p>
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #002060 0%, #003087 60%, #1a4db5 100%); padding: 28px 24px; text-align: center;">
+          <h2 style="color: white; margin: 0; font-size: 22px; letter-spacing: 1px;">🇮🇳 GovSahayak</h2>
+          <p style="color: #b3c6f0; margin: 6px 0 0; font-size: 13px;">ई-प्रमाण पत्र सेवा | e-Certificate Portal</p>
         </div>
-        <div style="padding: 30px; background: #f9f9f9;">
-          <h3 style="color: #1A3C6E;">Email Verification</h3>
-          <p>Your One Time Password (OTP) for registration is:</p>
-          <div style="background: #1A3C6E; color: white; font-size: 36px;
-            font-weight: bold; text-align: center; padding: 20px;
-            border-radius: 8px; letter-spacing: 10px; margin: 20px 0;">
+        <div style="padding: 32px 28px; background: #f9fafb;">
+          <h3 style="color: #1A3C6E; margin-top: 0;">Email Verification Code</h3>
+          <p style="color: #374151;">Please use the following One-Time Password (OTP) to verify your email address:</p>
+          <div style="background: linear-gradient(135deg, #002060 0%, #003087 100%); color: white; font-size: 38px;
+            font-weight: bold; text-align: center; padding: 22px;
+            border-radius: 10px; letter-spacing: 14px; margin: 24px 0;">
             ${otp}
           </div>
-          <p style="color: #666;">This OTP is valid for <strong>10 minutes</strong>.</p>
-          <p style="color: #666;">If you did not request this, please ignore this email.</p>
+          <p style="color: #6b7280; font-size: 14px;">⏱ This OTP is valid for <strong>10 minutes</strong>.</p>
+          <p style="color: #6b7280; font-size: 13px;">If you did not attempt to register on GovSahayak, please ignore this email.</p>
         </div>
-        <div style="background: #eee; padding: 15px; text-align: center;">
-          <p style="color: #999; font-size: 12px; margin: 0;">
-            Senate Bot — Government Services Portal
+        <div style="background: #e9ecef; padding: 14px; text-align: center;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+            भारत सरकार | Government of India — GovSahayak e-Certificate Portal
           </p>
         </div>
       </div>
@@ -75,7 +82,8 @@ exports.sendOTP = async (req, res) => {
 
 exports.verifyOTP = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const email = (req.body.email || "").toLowerCase().trim();
+    const otp = (req.body.otp || "").trim();
 
     if (!email || !otp) {
       return res.status(400).json({ message: "Email and OTP are required" });
@@ -96,14 +104,19 @@ exports.verifyOTP = async (req, res) => {
       });
     }
 
-    if (record.otp !== otp.trim()) {
+    if (record.otp !== otp) {
       return res.status(400).json({ message: "Invalid OTP. Please try again." });
     }
 
-    await OTP.findByIdAndUpdate(record._id, { verified: true });
-    await User.findOneAndUpdate({ email }, { email_verified: true });
-    await OTP.deleteMany({ email });
+    // Mark as verified but keep the record so /register can confirm it
+    // Give 15 more minutes to complete registration
+    const verifiedExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await OTP.findByIdAndUpdate(record._id, {
+      verified: true,
+      verified_expires_at: verifiedExpiresAt
+    });
 
+    console.log(`OTP verified for ${email}. Registration window: 15 mins.`);
     res.json({ message: "Email verified successfully", verified: true });
 
   } catch (error) {
