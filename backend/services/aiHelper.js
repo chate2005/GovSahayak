@@ -1,6 +1,6 @@
 const Groq = require("groq-sdk");
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "missing_key_placeholder" });
 
 const ACTIVE_MODELS = [
   "openai/gpt-oss-120b",

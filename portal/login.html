@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login / Register — GovSahayak e-Certificate Portal</title>
-  <meta name="description" content="Login or register to apply for government certificates online."/>
+  <meta name="description" content="Login or register to apply for government certificates online. Email verification required."/>
   <link rel="stylesheet" href="css/main.css"/>
   <style>
     body { background: linear-gradient(135deg, #002060 0%, #003087 50%, #1a4db5 100%); }
@@ -12,12 +12,33 @@
     .form-group { margin-bottom: 16px; }
     .password-wrapper { position: relative; }
     .toggle-pwd { position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;background:none;border:none;color:var(--gov-grey-500);font-size:16px; }
-    .otp-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
-    .otp-digit { height:48px; text-align:center; font-size:20px; font-weight:700; border:2px solid var(--gov-grey-300); border-radius:8px; width:100%; }
-    .otp-digit:focus { border-color:var(--gov-navy); outline:none; box-shadow:0 0 0 3px rgba(0,48,135,0.15); }
     .step-tabs { display:flex; gap:0; background:var(--gov-grey-100); border-radius:8px; padding:4px; margin-bottom:20px; }
     .step-tab { flex:1; padding:8px; text-align:center; font-size:13px; font-weight:600; border:none; background:none; cursor:pointer; border-radius:6px; color:var(--gov-grey-500); transition:var(--transition); }
     .step-tab.active { background:var(--gov-navy); color:white; }
+
+    /* ── OTP UI ─────────────────────────────────────── */
+    .otp-row { display:flex; gap:8px; align-items:flex-start; }
+    .otp-row .form-control { flex:1; }
+    .otp-send-btn { flex-shrink:0; height:44px; padding:0 14px; font-size:13px; font-weight:600; white-space:nowrap; border:none; border-radius:8px; cursor:pointer; background:var(--gov-navy); color:#fff; transition:.2s; }
+    .otp-send-btn:disabled { opacity:.55; cursor:not-allowed; }
+    .otp-section { background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:10px; padding:16px; margin-top:-4px; margin-bottom:4px; }
+    .otp-section-title { font-weight:600; color:#1A3C6E; font-size:13px; margin-bottom:2px; }
+    .otp-section-hint { font-size:12px; color:#6b7280; margin-bottom:12px; }
+    .otp-verify-row { display:flex; gap:8px; }
+    .otp-input { flex:1; letter-spacing:6px; font-size:18px; font-weight:700; text-align:center; height:44px; border:2px solid #bfdbfe; border-radius:8px; outline:none; transition:.2s; }
+    .otp-input:focus { border-color:#003087; box-shadow:0 0 0 3px rgba(0,48,135,.12); }
+    .otp-verify-btn { height:44px; padding:0 16px; font-weight:600; font-size:13px; border:none; border-radius:8px; cursor:pointer; background:#16a34a; color:#fff; transition:.2s; white-space:nowrap; }
+    .otp-verify-btn:disabled { opacity:.55; cursor:not-allowed; }
+    .otp-countdown { font-size:12px; color:#6b7280; margin-top:8px; }
+    .otp-countdown span { font-weight:700; color:#1A3C6E; }
+    .verified-badge { display:flex; align-items:center; gap:8px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:11px 16px; margin-bottom:4px; }
+    .verified-badge-icon { font-size:18px; }
+    .verified-badge-text { font-weight:600; color:#16a34a; font-size:13px; }
+    .pw-req-list { margin:8px 0 0; padding:10px 12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; list-style:none; display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; }
+    .pw-req-list li { font-size:11.5px; display:flex; align-items:center; gap:5px; color:#6b7280; }
+    .pw-req-list li.ok { color:#16a34a; font-weight:600; }
+    .pw-req-list li::before { content:'✗'; font-size:10px; color:#ef4444; }
+    .pw-req-list li.ok::before { content:'✓'; color:#16a34a; }
   </style>
 </head>
 <body>
@@ -71,27 +92,78 @@
         </form>
 
         <!-- Register Form -->
-        <form id="register-form" style="display:none;" onsubmit="handleRegister(event)">
+        <form id="register-form" style="display:none;" onsubmit="handleRegister(event)" novalidate>
+
+          <!-- Step indicator -->
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:16px;font-size:12px;color:#6b7280;">
+            <span id="step-1-label" style="font-weight:700;color:#1A3C6E;">① Fill Details</span>
+            <span style="flex:1;height:2px;background:#e5e7eb;border-radius:4px;"><span id="step-bar-1" style="display:block;height:2px;background:#1A3C6E;border-radius:4px;width:0%;transition:.4s;"></span></span>
+            <span id="step-2-label" style="color:#9ca3af;">② Verify Email</span>
+            <span style="flex:1;height:2px;background:#e5e7eb;border-radius:4px;"><span id="step-bar-2" style="display:block;height:2px;background:#16a34a;border-radius:4px;width:0%;transition:.4s;"></span></span>
+            <span id="step-3-label" style="color:#9ca3af;">③ Done</span>
+          </div>
+
+          <!-- Full Name -->
           <div class="form-group">
             <label class="form-label">Full Name <span class="required">*</span></label>
             <input type="text" id="reg-name" class="form-control" placeholder="As on Aadhaar card" required/>
           </div>
+
+          <!-- Email + Send OTP -->
           <div class="form-group">
             <label class="form-label">Email Address <span class="required">*</span></label>
-            <input type="email" id="reg-email" class="form-control" placeholder="Your email address" required autocomplete="email"/>
+            <div class="otp-row">
+              <input type="email" id="reg-email" class="form-control" placeholder="Your email address" required autocomplete="email"/>
+              <button type="button" class="otp-send-btn" id="send-otp-btn" onclick="sendOtp()">Send OTP</button>
+            </div>
           </div>
+
+          <!-- OTP entry section (hidden until sent) -->
+          <div id="otp-section" style="display:none;" class="form-group">
+            <div class="otp-section">
+              <div class="otp-section-title">📧 OTP sent! Check your inbox</div>
+              <div class="otp-section-hint">Enter the 6-digit code sent to <strong id="otp-email-display"></strong></div>
+              <div class="otp-verify-row">
+                <input type="text" id="otp-input" class="otp-input" maxlength="6" placeholder="——————" inputmode="numeric" autocomplete="one-time-code"/>
+                <button type="button" class="otp-verify-btn" id="verify-otp-btn" onclick="verifyOtp()">Verify</button>
+              </div>
+              <div class="otp-countdown" id="otp-countdown-wrap">
+                Resend in <span id="otp-timer">60</span>s
+                &nbsp;<a href="#" id="resend-link" style="display:none;font-size:12px;color:#1A3C6E;font-weight:600;" onclick="sendOtp();return false;">Resend OTP</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Verified badge (hidden until verified) -->
+          <div id="otp-verified-badge" style="display:none;" class="form-group">
+            <div class="verified-badge">
+              <span class="verified-badge-icon">✅</span>
+              <span class="verified-badge-text">Email verified successfully!</span>
+            </div>
+          </div>
+
+          <!-- Mobile Number -->
           <div class="form-group">
             <label class="form-label">Mobile Number <span class="required">*</span></label>
             <input type="tel" id="reg-phone" class="form-control" placeholder="10-digit mobile number" maxlength="10" required/>
           </div>
+
+          <!-- Password -->
           <div class="form-group">
             <label class="form-label">Password <span class="required">*</span></label>
             <div class="password-wrapper">
-              <input type="password" id="reg-pwd" class="form-control" placeholder="Min 8 chars, 1 uppercase, 1 number, 1 special" required/>
+              <input type="password" id="reg-pwd" class="form-control" placeholder="Min 8 chars, 1 uppercase, 1 number, 1 special" required oninput="updatePwStrength()"/>
               <button type="button" class="toggle-pwd" onclick="togglePwd('reg-pwd')">👁</button>
             </div>
-            <div class="form-hint">Min 8 characters, 1 uppercase, 1 number, 1 special character (@#$!)</div>
+            <!-- Live password requirements -->
+            <ul class="pw-req-list" id="pw-req-list">
+              <li id="pw-len">At least 8 characters</li>
+              <li id="pw-upper">One uppercase letter</li>
+              <li id="pw-num">One number</li>
+              <li id="pw-special">One special character</li>
+            </ul>
           </div>
+
           <button type="submit" class="btn btn-primary btn-full btn-lg" id="register-btn">
             <span class="btn-text">📝 Create Account</span>
           </button>
@@ -132,15 +204,16 @@
 <div id="toast-container"></div>
 <script src="js/api.js"></script>
 <script>
+  // ── Tab / mode switching ──────────────────────────────
   function switchTab(tab) {
     document.getElementById('citizen-section').style.display = tab === 'citizen' ? '' : 'none';
-    document.getElementById('officer-section').style.display = tab === 'officer'  ? '' : 'none';
+    document.getElementById('officer-section').style.display  = tab === 'officer'  ? '' : 'none';
     document.getElementById('tab-citizen').classList.toggle('active', tab === 'citizen');
     document.getElementById('tab-officer').classList.toggle('active', tab === 'officer');
   }
 
   function switchAuthMode(mode) {
-    document.getElementById('login-form').style.display    = mode === 'login' ? '' : 'none';
+    document.getElementById('login-form').style.display    = mode === 'login'    ? '' : 'none';
     document.getElementById('register-form').style.display = mode === 'register' ? '' : 'none';
     document.getElementById('login-tab').classList.toggle('active', mode === 'login');
     document.getElementById('register-tab').classList.toggle('active', mode === 'register');
@@ -157,6 +230,146 @@
     btn.classList.toggle('btn-loading', loading);
   }
 
+  // ── Password live validation ──────────────────────────
+  function updatePwStrength() {
+    const pw = document.getElementById('reg-pwd').value;
+    const check = (id, cond) => document.getElementById(id).classList.toggle('ok', cond);
+    check('pw-len',     pw.length >= 8);
+    check('pw-upper',   /[A-Z]/.test(pw));
+    check('pw-num',     /[0-9]/.test(pw));
+    check('pw-special', /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw));
+  }
+
+  // ── OTP State ─────────────────────────────────────────
+  let otpVerified = false;
+  let countdownTimer = null;
+
+  function startCountdown() {
+    let seconds = 60;
+    document.getElementById('resend-link').style.display = 'none';
+    document.getElementById('otp-timer').textContent = seconds;
+    document.getElementById('otp-countdown-wrap').style.display = '';
+
+    clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+      seconds--;
+      document.getElementById('otp-timer').textContent = seconds;
+      if (seconds <= 0) {
+        clearInterval(countdownTimer);
+        document.getElementById('resend-link').style.display = 'inline';
+        document.getElementById('otp-countdown-wrap').innerHTML =
+          '<a href="#" style="font-size:12px;color:#1A3C6E;font-weight:600;" onclick="sendOtp();return false;">Resend OTP</a>';
+      }
+    }, 1000);
+  }
+
+  // ── Send OTP ─────────────────────────────────────────
+  async function sendOtp() {
+    const email = document.getElementById('reg-email').value.trim();
+    if (!email) {
+      window.govUtils.showToast('Please enter your email address first.', 'warning');
+      return;
+    }
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailOk) {
+      window.govUtils.showToast('Please enter a valid email address.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('send-otp-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    try {
+      await window.API.OTP.send({ email });
+      // Show OTP section
+      document.getElementById('otp-email-display').textContent = email;
+      document.getElementById('otp-section').style.display = '';
+      document.getElementById('otp-verified-badge').style.display = 'none';
+      document.getElementById('reg-email').readOnly = true;
+      // Update step bar
+      document.getElementById('step-bar-1').style.width = '100%';
+      document.getElementById('step-2-label').style.color = '#1A3C6E';
+      startCountdown();
+      window.govUtils.showToast('OTP sent to ' + email + '. Check your inbox.', 'success');
+    } catch (err) {
+      window.govUtils.showToast(err.message || 'Failed to send OTP.', 'error');
+      btn.disabled = false;
+    } finally {
+      btn.textContent = 'Resend';
+    }
+  }
+
+  // ── Verify OTP ────────────────────────────────────────
+  async function verifyOtp() {
+    const email = document.getElementById('reg-email').value.trim();
+    const otp   = document.getElementById('otp-input').value.trim();
+    if (!otp || otp.length < 6) {
+      window.govUtils.showToast('Please enter the 6-digit OTP.', 'warning');
+      return;
+    }
+
+    const verifyBtn = document.getElementById('verify-otp-btn');
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Verifying…';
+
+    try {
+      const data = await window.API.OTP.verify({ email, otp });
+      if (data.verified) {
+        otpVerified = true;
+        clearInterval(countdownTimer);
+        // Hide OTP section, show badge
+        document.getElementById('otp-section').style.display = 'none';
+        document.getElementById('send-otp-btn').style.display = 'none';
+        document.getElementById('otp-verified-badge').style.display = '';
+        // Update step bar
+        document.getElementById('step-bar-2').style.width = '100%';
+        document.getElementById('step-3-label').style.color = '#16a34a';
+        window.govUtils.showToast('Email verified! Now complete your registration.', 'success');
+      } else {
+        window.govUtils.showToast(data.message || 'Invalid OTP.', 'error');
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify';
+      }
+    } catch (err) {
+      window.govUtils.showToast(err.message || 'Verification failed.', 'error');
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = 'Verify';
+    }
+  }
+
+  // ── Register ─────────────────────────────────────────
+  async function handleRegister(e) {
+    e.preventDefault();
+
+    if (!otpVerified) {
+      window.govUtils.showToast('Please verify your email via OTP before creating your account.', 'warning');
+      // Auto-trigger send OTP if not yet sent
+      const otpSection = document.getElementById('otp-section');
+      if (otpSection.style.display === 'none' &&
+          document.getElementById('otp-verified-badge').style.display === 'none') {
+        sendOtp();
+      }
+      return;
+    }
+
+    setLoading('register-btn', true);
+    try {
+      const data = await window.API.Auth.register({
+        name:     document.getElementById('reg-name').value,
+        email:    document.getElementById('reg-email').value,
+        phone:    document.getElementById('reg-phone').value,
+        password: document.getElementById('reg-pwd').value,
+      });
+      window.govUtils.saveAuth(data);
+      window.govUtils.showToast('🎉 Account created! Welcome to GovSahayak.', 'success');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+    } catch(err) {
+      window.govUtils.showToast(err.message || 'Registration failed.', 'error');
+    } finally { setLoading('register-btn', false); }
+  }
+
+  // ── Login ─────────────────────────────────────────────
   async function handleLogin(e) {
     e.preventDefault();
     setLoading('login-btn', true);
@@ -173,24 +386,7 @@
     } finally { setLoading('login-btn', false); }
   }
 
-  async function handleRegister(e) {
-    e.preventDefault();
-    setLoading('register-btn', true);
-    try {
-      const data = await window.API.Auth.register({
-        name:     document.getElementById('reg-name').value,
-        email:    document.getElementById('reg-email').value,
-        phone:    document.getElementById('reg-phone').value,
-        password: document.getElementById('reg-pwd').value,
-      });
-      window.govUtils.saveAuth(data);
-      window.govUtils.showToast('Account created! Welcome to GovSahayak.', 'success');
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
-    } catch(err) {
-      window.govUtils.showToast(err.message || 'Registration failed.', 'error');
-    } finally { setLoading('register-btn', false); }
-  }
-
+  // ── Officer Login ─────────────────────────────────────
   async function handleOfficerLogin(e) {
     e.preventDefault();
     setLoading('officer-btn', true);

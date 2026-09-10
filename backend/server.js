@@ -1,9 +1,9 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 require("./config/db");
 
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 
 const authRoutes = require("./routes/authRoutes");
 const chatRoutes = require("./routes/chatRoutes");
@@ -21,7 +21,14 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Serve the web portal static files
-app.use("/portal", express.static(path.join(__dirname, "../portal")));
+const fs = require("fs");
+const portalPath = path.join(__dirname, "../portal");
+const localPortalPath = path.join(__dirname, "portal");
+if (fs.existsSync(portalPath)) {
+  app.use("/portal", express.static(portalPath));
+} else if (fs.existsSync(localPortalPath)) {
+  app.use("/portal", express.static(localPortalPath));
+}
 
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
@@ -67,4 +74,4 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));

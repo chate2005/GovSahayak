@@ -1,5 +1,9 @@
 const mongoose = require("mongoose");
 
+if (!process.env.MONGO_URI) {
+  console.error("❌ CRITICAL: MONGO_URI environment variable is missing! Please configure MONGO_URI in your Railway Variables dashboard.");
+}
+
 mongoose.connect(process.env.MONGO_URI, {
   // ── Fix for: wsarecv TCP connection forcibly closed ──────────────────────
   serverSelectionTimeoutMS: 10000,  // Give up after 10s if can't reach server
