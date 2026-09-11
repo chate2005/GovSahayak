@@ -1,4 +1,4 @@
-/**
+ /**
  * mockUidaiVault.js
  * ─────────────────────────────────────────────────────────────────────────────
  * Simulated UIDAI e-KYC Vault API for GovSahayak (RAG-LLM Architecture).

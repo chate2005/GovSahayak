@@ -1,4 +1,11 @@
 const mongoose = require("mongoose");
+const dns = require("dns");
+
+try {
+  dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
+} catch (e) {
+  // Ignore in environments where setting DNS servers is restricted
+}
 
 if (!process.env.MONGO_URI) {
   console.error("❌ CRITICAL: MONGO_URI environment variable is missing! Please configure MONGO_URI in your Railway Variables dashboard.");

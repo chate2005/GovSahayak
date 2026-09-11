@@ -1,6 +1,12 @@
 const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
-require("./config/db");
+const mongoose = require("./config/db");
+const { seedOfficerAccount } = require("./seedOfficer");
+
+// Auto-seed default officer account when DB connection opens
+mongoose.connection.once("open", () => {
+  seedOfficerAccount().catch(err => console.error("Officer auto-seed error:", err.message));
+});
 
 const express = require("express");
 const cors = require("cors");

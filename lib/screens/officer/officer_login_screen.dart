@@ -109,17 +109,54 @@ class _OfficerLoginScreenState extends State<OfficerLoginScreen> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.orange[300]!),
                 ),
-                child: const Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.security, color: Colors.orange, size: 20),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        "This portal is restricted to authorized government officers only.",
-                        style: TextStyle(
-                            color: Colors.orange,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500),
+                    const Row(
+                      children: [
+                        Icon(Icons.security, color: Colors.orange, size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "This portal is restricted to authorized government officers only.",
+                            style: TextStyle(
+                                color: Colors.orange,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          emailController.text = "officer@revenue.gov.in";
+                          passwordController.text = "Officer@12345";
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF1A3C6E)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.bolt, size: 14, color: Color(0xFF1A3C6E)),
+                            SizedBox(width: 4),
+                            Text(
+                              "Quick Fill: officer@revenue.gov.in",
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1A3C6E),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
