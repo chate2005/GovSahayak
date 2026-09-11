@@ -121,9 +121,47 @@
           Applicant Personal Details
         </div>
         <div class="form-body">
+          <!-- Applying for Self vs Other Selection -->
+          <div style="margin-bottom:20px;padding:16px;background:var(--gov-grey-50);border:1.5px solid var(--gov-grey-200);border-radius:8px;">
+            <label class="form-label" style="font-weight:700;margin-bottom:10px;display:block;color:var(--gov-navy);">
+              Who is this certificate being applied for? <span class="required">*</span>
+            </label>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;">
+              <label id="lbl-inc-self" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid var(--gov-navy);border-radius:6px;background:#fff;cursor:pointer;font-weight:600;font-size:13.5px;">
+                <input type="radio" name="inc-applying-for" value="self" checked onchange="toggleBeneficiaryMode('income', this.value)">
+                👤 Applying for Myself
+              </label>
+              <label id="lbl-inc-other" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid var(--gov-grey-300);border-radius:6px;background:#fff;cursor:pointer;font-weight:600;font-size:13.5px;">
+                <input type="radio" name="inc-applying-for" value="other" onchange="toggleBeneficiaryMode('income', this.value)">
+                👥 Applying for Family Member / Other
+              </label>
+            </div>
+            
+            <div id="inc-beneficiary-group" style="display:none;margin-top:14px;padding-top:12px;border-top:1px dashed var(--gov-grey-300);">
+              <div class="form-grid" style="grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));">
+                <div class="form-group">
+                  <label class="form-label">Relationship with Beneficiary <span class="required">*</span></label>
+                  <select id="inc-relationship" class="form-control">
+                    <option value="Mother" selected>Mother (आई / माता)</option>
+                    <option value="Father">Father (वडील / पिता)</option>
+                    <option value="Spouse">Spouse (पती / पत्नी)</option>
+                    <option value="Child">Son / Daughter (मुलगा / मुलगी)</option>
+                    <option value="Sibling">Brother / Sister (भाऊ / बहीण)</option>
+                    <option value="Other">Other Dependent Family Member</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <div style="font-size:12px;color:var(--gov-grey-600);line-height:1.5;margin-top:24px;">
+                    ℹ️ <em>Please fill the beneficiary's name and Aadhaar details below. The certificate will be officially issued in their name.</em>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">Full Name <span class="required">*</span>
+              <label class="form-label" id="lbl-inc-name">Full Name <span class="required">*</span>
                 <span class="hint">(as on Aadhaar)</span>
               </label>
               <input type="text" id="inc-name" class="form-control" placeholder="e.g. Rajesh Kumar Sharma" required/>
@@ -257,6 +295,24 @@
           Child Information
         </div>
         <div class="form-body">
+          <!-- Applying for Child vs Self Selection -->
+          <div style="margin-bottom:20px;padding:16px;background:var(--gov-grey-50);border:1.5px solid var(--gov-grey-200);border-radius:8px;">
+            <label class="form-label" style="font-weight:700;margin-bottom:10px;display:block;color:var(--gov-navy);">
+              Applicant Role / Relationship <span class="required">*</span>
+            </label>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;">
+              <label id="lbl-bc-other" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid var(--gov-navy);border-radius:6px;background:#fff;cursor:pointer;font-weight:600;font-size:13.5px;">
+                <input type="radio" name="bc-applying-for" value="other" checked onchange="toggleBeneficiaryMode('birth', this.value)">
+                👶 Parent / Guardian applying for Child
+              </label>
+              <label id="lbl-bc-self" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid var(--gov-grey-300);border-radius:6px;background:#fff;cursor:pointer;font-weight:600;font-size:13.5px;">
+                <input type="radio" name="bc-applying-for" value="self" onchange="toggleBeneficiaryMode('birth', this.value)">
+                👤 Applying for Self (Adult Registration)
+              </label>
+            </div>
+            <input type="hidden" id="bc-relationship" value="Child" />
+          </div>
+
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label">Child's Full Name <span class="required">*</span></label>
@@ -378,9 +434,47 @@
           Personal Details
         </div>
         <div class="form-body">
+          <!-- Applying for Self vs Other Selection -->
+          <div style="margin-bottom:20px;padding:16px;background:var(--gov-grey-50);border:1.5px solid var(--gov-grey-200);border-radius:8px;">
+            <label class="form-label" style="font-weight:700;margin-bottom:10px;display:block;color:var(--gov-navy);">
+              Who is this domicile certificate being applied for? <span class="required">*</span>
+            </label>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;">
+              <label id="lbl-dc-self" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid var(--gov-navy);border-radius:6px;background:#fff;cursor:pointer;font-weight:600;font-size:13.5px;">
+                <input type="radio" name="dc-applying-for" value="self" checked onchange="toggleBeneficiaryMode('domicile', this.value)">
+                👤 Applying for Myself
+              </label>
+              <label id="lbl-dc-other" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border:2px solid var(--gov-grey-300);border-radius:6px;background:#fff;cursor:pointer;font-weight:600;font-size:13.5px;">
+                <input type="radio" name="dc-applying-for" value="other" onchange="toggleBeneficiaryMode('domicile', this.value)">
+                👥 Applying for Family Member / Other
+              </label>
+            </div>
+            
+            <div id="dc-beneficiary-group" style="display:none;margin-top:14px;padding-top:12px;border-top:1px dashed var(--gov-grey-300);">
+              <div class="form-grid" style="grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));">
+                <div class="form-group">
+                  <label class="form-label">Relationship with Beneficiary <span class="required">*</span></label>
+                  <select id="dc-relationship" class="form-control">
+                    <option value="Mother" selected>Mother (आई / माता)</option>
+                    <option value="Father">Father (वडील / पिता)</option>
+                    <option value="Spouse">Spouse (पती / पत्नी)</option>
+                    <option value="Child">Son / Daughter (मुलगा / मुलगी)</option>
+                    <option value="Sibling">Brother / Sister (भाऊ / बहीण)</option>
+                    <option value="Other">Other Dependent</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <div style="font-size:12px;color:var(--gov-grey-600);line-height:1.5;margin-top:24px;">
+                    ℹ️ <em>Please enter the beneficiary's personal details below for whom the domicile certificate is requested.</em>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">Full Name <span class="required">*</span>
+              <label class="form-label" id="lbl-dc-name">Full Name <span class="required">*</span>
                 <span class="hint">(as on Aadhaar)</span>
               </label>
               <input type="text" id="dc-name" class="form-control" placeholder="e.g. Priya Ramesh Patil" required/>
@@ -659,6 +753,60 @@
     document.getElementById(`form-${type}`)?.scrollIntoView({ behavior:'smooth', block:'start' });
   }
 
+  function toggleBeneficiaryMode(certType, value) {
+    const isOther = value === 'other';
+    if (certType === 'income') {
+      const group = document.getElementById('inc-beneficiary-group');
+      const lblSelf = document.getElementById('lbl-inc-self');
+      const lblOther = document.getElementById('lbl-inc-other');
+      const lblName = document.getElementById('lbl-inc-name');
+      if (group) group.style.display = isOther ? 'block' : 'none';
+      if (lblSelf) {
+        lblSelf.style.borderColor = isOther ? 'var(--gov-grey-300)' : 'var(--gov-navy)';
+        lblSelf.style.fontWeight = isOther ? '500' : '700';
+      }
+      if (lblOther) {
+        lblOther.style.borderColor = isOther ? 'var(--gov-navy)' : 'var(--gov-grey-300)';
+        lblOther.style.fontWeight = isOther ? '700' : '500';
+      }
+      if (lblName) {
+        lblName.innerHTML = isOther 
+          ? `Beneficiary's Full Name <span class="required">*</span> <span class="hint">(as on Aadhaar)</span>`
+          : `Full Name <span class="required">*</span> <span class="hint">(as on Aadhaar)</span>`;
+      }
+    } else if (certType === 'domicile') {
+      const group = document.getElementById('dc-beneficiary-group');
+      const lblSelf = document.getElementById('lbl-dc-self');
+      const lblOther = document.getElementById('lbl-dc-other');
+      const lblName = document.getElementById('lbl-dc-name');
+      if (group) group.style.display = isOther ? 'block' : 'none';
+      if (lblSelf) {
+        lblSelf.style.borderColor = isOther ? 'var(--gov-grey-300)' : 'var(--gov-navy)';
+        lblSelf.style.fontWeight = isOther ? '500' : '700';
+      }
+      if (lblOther) {
+        lblOther.style.borderColor = isOther ? 'var(--gov-navy)' : 'var(--gov-grey-300)';
+        lblOther.style.fontWeight = isOther ? '700' : '500';
+      }
+      if (lblName) {
+        lblName.innerHTML = isOther
+          ? `Beneficiary's Full Name <span class="required">*</span> <span class="hint">(as on Aadhaar)</span>`
+          : `Full Name <span class="required">*</span> <span class="hint">(as on Aadhaar)</span>`;
+      }
+    } else if (certType === 'birth') {
+      const lblOther = document.getElementById('lbl-bc-other');
+      const lblSelf = document.getElementById('lbl-bc-self');
+      if (lblOther) {
+        lblOther.style.borderColor = isOther ? 'var(--gov-navy)' : 'var(--gov-grey-300)';
+        lblOther.style.fontWeight = isOther ? '700' : '500';
+      }
+      if (lblSelf) {
+        lblSelf.style.borderColor = isOther ? 'var(--gov-grey-300)' : 'var(--gov-navy)';
+        lblSelf.style.fontWeight = isOther ? '500' : '700';
+      }
+    }
+  }
+
   function previewFile(input, previewId, zoneId) {
     const preview = document.getElementById(previewId);
     if (!preview) return;
@@ -765,6 +913,25 @@
            <a href="${certUrl}" target="_blank" class="btn btn-success btn-lg">⬇️ Download Certificate PDF</a>
          </div>` : '';
 
+    const isApproved = ['approved','auto_approved'].includes(decision?.toLowerCase());
+    const auditAdvisoryHtml = isApproved ? `
+      <div style="margin-top:20px;padding:16px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;text-align:left;">
+        <div style="display:flex;align-items:flex-start;gap:12px;">
+          <span style="font-size:24px;line-height:1;">⚠️</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#92400e;margin-bottom:5px;">
+              Statutory Notice: Post-Issuance Administrative Audit &amp; Verification
+            </div>
+            <div style="font-size:12.5px;color:#78350f;line-height:1.6;">
+              This certificate has been issued under <strong>Automated AI Verification</strong> in compliance with Department Guidelines.
+              Please note that all automated issuances are subject to periodic <strong>post-issuance administrative audit</strong> by the designated Revenue Officer (Tehsildar / SDM).
+              If any discrepancy, forged document, or misrepresentation is detected during audit, the authority reserves the right to <strong>revoke or cancel this certificate</strong>.
+              In such an event, you will receive an official notification via your registered email, and you will need to apply or verify in-person at your local Tehsil / SDM Seva Kendra with original physical documents.
+            </div>
+          </div>
+        </div>
+      </div>` : '';
+
     section.innerHTML = `
       <div class="result-card ${cardClass}">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
@@ -782,6 +949,7 @@
         ${reasoning ? `<div class="mt-md"><strong style="font-size:13px;">🤖 AI Reasoning:</strong><p style="font-size:13px;color:var(--gov-grey-600);margin-top:6px;line-height:1.6;">${reasoning}</p></div>` : ''}
         ${citHtml}
         ${certHtml}
+        ${auditAdvisoryHtml}
         <div class="mt-lg d-flex gap-md flex-wrap">
           <a href="dashboard.html" class="btn btn-outline">📊 View My Applications</a>
           <button class="btn btn-saffron" onclick="selectCert('${selectedCert}')">🔄 Apply Again</button>
@@ -811,6 +979,11 @@
     setSubmitLoading('submit-income-btn', true);
     showProcessing();
 
+    const applyingFor = document.querySelector('input[name="inc-applying-for"]:checked')?.value || 'self';
+    const relationship = applyingFor === 'other'
+      ? (document.getElementById('inc-relationship')?.value || 'Other')
+      : 'Self';
+
     const fd = new FormData();
     fd.append('aadhaar', aadhaarFile);
     fd.append('income_proof', incomeFile);
@@ -824,6 +997,8 @@
     fd.append('employer_name',  document.getElementById('inc-employer').value);
     fd.append('purpose',        document.getElementById('inc-purpose').value);
     fd.append('financial_year', document.getElementById('inc-fy').value);
+    fd.append('applying_for',   applyingFor);
+    fd.append('beneficiary_relationship', relationship);
 
     const stepsDone = animateProcessingSteps();
     try {
@@ -848,6 +1023,9 @@
     setSubmitLoading('submit-birth-btn', true);
     showProcessing();
 
+    const applyingFor = document.querySelector('input[name="bc-applying-for"]:checked')?.value || 'other';
+    const relationship = applyingFor === 'self' ? 'Self' : (document.getElementById('bc-relationship')?.value || 'Child');
+
     const fd = new FormData();
     fd.append('document', birthFile);
     fd.append('user_id',     window.govUtils.getUserId());
@@ -861,6 +1039,8 @@
     fd.append('mother_aadhaar', document.getElementById('bc-mother-aadhaar').value);
     fd.append('mobile',      document.getElementById('bc-mobile').value);
     fd.append('address',     document.getElementById('bc-address').value);
+    fd.append('applying_for', applyingFor);
+    fd.append('beneficiary_relationship', relationship);
 
     const aadFile = document.getElementById('file-bc-aadhaar').files[0];
     if (aadFile) fd.append('document', aadFile);
@@ -899,6 +1079,11 @@
     setSubmitLoading('submit-dc-btn', true);
     showProcessing();
 
+    const applyingFor = document.querySelector('input[name="dc-applying-for"]:checked')?.value || 'self';
+    const relationship = applyingFor === 'other'
+      ? (document.getElementById('dc-relationship')?.value || 'Other')
+      : 'Self';
+
     // Domicile uses step-by-step upload — first send aadhaar as step 1
     const fd1 = new FormData();
     fd1.append('document', aadhaarFile);
@@ -915,6 +1100,8 @@
     fd1.append('dc_duration_years', years);
     fd1.append('dc_purpose',   document.getElementById('dc-purpose').value);
     fd1.append('upload_step',  '1');
+    fd1.append('applying_for', applyingFor);
+    fd1.append('beneficiary_relationship', relationship);
     // Attach all 3 docs so backend can process them
     fd1.append('addr_proof', addrFile);
     fd1.append('residency_proof', resFile);

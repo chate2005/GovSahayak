@@ -121,7 +121,7 @@ exports.getPendingApplications = async (req, res) => {
 
     // Enrich with user details
     const enriched = await Promise.all(apps.map(async (app) => {
-      const user = await User.findById(app.user_id).select("name email phone");
+      const user = await User.findById(app.user_id).select("name email phone createdAt");
       const docs = await Document.find({ application_id: app._id.toString() });
 
       return {
@@ -129,8 +129,14 @@ exports.getPendingApplications = async (req, res) => {
         service_type: app.service_type,
         status: app.status,
         financial_year: app.financial_year,
+        entered_income: app.entered_income,
         extracted_income: app.extracted_income,
         aadhaar_number: app.aadhaar_number,
+        name_from_chat: app.name_from_chat,
+        mobile_from_chat: app.mobile_from_chat,
+        applying_for: app.applying_for || "self",
+        beneficiary_relationship: app.beneficiary_relationship || (app.applying_for === "other" ? "Other" : "Self"),
+        beneficiary_name: app.beneficiary_name || app.name_from_chat || app.dc_full_name || app.child_name || (user ? user.name : "Applicant"),
         child_name: app.child_name,
         dob: app.dob,
         place_of_birth: app.place_of_birth,
@@ -171,7 +177,8 @@ exports.getPendingApplications = async (req, res) => {
         user: user ? {
           name: user.name,
           email: user.email,
-          phone: user.phone
+          phone: user.phone,
+          createdAt: user.createdAt
         } : null,
         documents: docs.map(d => ({
           file_type: d.file_type,
@@ -193,7 +200,7 @@ exports.getAllApplications = async (req, res) => {
     const apps = await Application.find().sort({ createdAt: -1 });
 
     const enriched = await Promise.all(apps.map(async (app) => {
-      const user = await User.findById(app.user_id).select("name email phone");
+      const user = await User.findById(app.user_id).select("name email phone createdAt");
       const docs = await Document.find({ application_id: app._id.toString() });
 
       return {
@@ -201,8 +208,14 @@ exports.getAllApplications = async (req, res) => {
         service_type: app.service_type,
         status: app.status,
         financial_year: app.financial_year,
+        entered_income: app.entered_income,
         extracted_income: app.extracted_income,
         aadhaar_number: app.aadhaar_number,
+        name_from_chat: app.name_from_chat,
+        mobile_from_chat: app.mobile_from_chat,
+        applying_for: app.applying_for || "self",
+        beneficiary_relationship: app.beneficiary_relationship || (app.applying_for === "other" ? "Other" : "Self"),
+        beneficiary_name: app.beneficiary_name || app.name_from_chat || app.dc_full_name || app.child_name || (user ? user.name : "Applicant"),
         child_name: app.child_name,
         dob: app.dob,
         place_of_birth: app.place_of_birth,
@@ -243,7 +256,8 @@ exports.getAllApplications = async (req, res) => {
         user: user ? {
           name: user.name,
           email: user.email,
-          phone: user.phone
+          phone: user.phone,
+          createdAt: user.createdAt
         } : null,
         documents: docs.map(d => ({
           file_type: d.file_type,
@@ -275,7 +289,7 @@ exports.approveApplication = async (req, res) => {
     if (!app) return res.status(404).json({ error: "Application not found" });
 
     const user = await User.findById(app.user_id);
-    const userName = user ? user.name : "Applicant";
+    const userName = app.beneficiary_name || app.name_from_chat || app.dc_full_name || app.child_name || (user ? user.name : "Applicant");
 
     console.log("Generating certificate for officer approval:", userName);
     const certificateUrl = await generateCertificate(app, userName);

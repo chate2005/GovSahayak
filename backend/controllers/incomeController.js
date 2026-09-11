@@ -52,26 +52,26 @@ async function urlToBase64(url) {
 
 function verhoeffValidate(num) {
   const d = [
-    [0,1,2,3,4,5,6,7,8,9],
-    [1,2,3,4,0,6,7,8,9,5],
-    [2,3,4,0,1,7,8,9,5,6],
-    [3,4,0,1,2,8,9,5,6,7],
-    [4,0,1,2,3,9,5,6,7,8],
-    [5,9,8,7,6,0,4,3,2,1],
-    [6,5,9,8,7,1,0,4,3,2],
-    [7,6,5,9,8,2,1,0,4,3],
-    [8,7,6,5,9,3,2,1,0,4],
-    [9,8,7,6,5,4,3,2,1,0]
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
+    [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
+    [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
+    [4, 0, 1, 2, 3, 9, 5, 6, 7, 8],
+    [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
+    [6, 5, 9, 8, 7, 1, 0, 4, 3, 2],
+    [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
+    [8, 7, 6, 5, 9, 3, 2, 1, 0, 4],
+    [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
   ];
   const p = [
-    [0,1,2,3,4,5,6,7,8,9],
-    [1,5,7,6,2,8,3,0,9,4],
-    [5,8,0,3,7,9,6,1,4,2],
-    [8,9,1,6,0,4,3,5,2,7],
-    [9,4,5,3,1,2,6,8,7,0],
-    [4,2,8,6,5,7,3,9,0,1],
-    [2,7,9,3,8,0,6,4,1,5],
-    [7,0,4,6,9,1,3,2,5,8]
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
+    [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
+    [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
+    [9, 4, 5, 3, 1, 2, 6, 8, 7, 0],
+    [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
+    [2, 7, 9, 3, 8, 0, 6, 4, 1, 5],
+    [7, 0, 4, 6, 9, 1, 3, 2, 5, 8]
   ];
   const digits = num.toString().split("").reverse().map(Number);
   let c = 0;
@@ -118,7 +118,7 @@ function calculateSimilarity(str1, str2) {
 function validateNameMatch(enteredName, ocrName) {
   const sim = calculateSimilarity(enteredName, ocrName);
   if (sim < 0.6) {
-    return { valid: false, reason: `Name mismatch: Entered '${enteredName}' vs Document '${ocrName}' (similarity: ${Math.round(sim*100)}%)` };
+    return { valid: false, reason: `Name mismatch: Entered '${enteredName}' vs Document '${ocrName}' (similarity: ${Math.round(sim * 100)}%)` };
   }
   return { valid: true, reason: null };
 }
@@ -332,8 +332,8 @@ async function generateCertificate(app, userName, aadhaarNumber) {
     doc.fontSize(16).font("Helvetica")
       .text("Income Certificate", { align: "center" });
     doc.moveDown(0.5);
-   doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
-doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
+    doc.moveDown(0.5);
     doc.moveDown(1);
     doc.fontSize(13).font("Helvetica-Bold").text("CERTIFICATE OF INCOME");
     doc.moveDown(0.5);
@@ -374,9 +374,9 @@ exports.uploadDocuments = async (req, res) => {
   console.log("=== UPLOAD REQUEST RECEIVED ===");
 
   try {
-    let { application_id, user_id, name, mobile, declared_income, employment_type, employer_name, purpose, financial_year, aadhaar_number } = req.body;
+    let { application_id, user_id, name, mobile, declared_income, employment_type, employer_name, purpose, financial_year, aadhaar_number, applying_for, beneficiary_relationship } = req.body;
 
-    console.log("Application ID:", application_id, "| Employment Type:", employment_type);
+    console.log("Application ID:", application_id, "| Employment Type:", employment_type, "| Applying For:", applying_for);
     console.log("Files:", req.files ? Object.keys(req.files) : "none");
 
     if (!req.files || !req.files["aadhaar"] || !req.files["income_proof"]) {
@@ -399,9 +399,21 @@ exports.uploadDocuments = async (req, res) => {
         mobile_from_chat: mobile || "",
         entered_income: declared_income ? declared_income.toString() : "",
         aadhaar_number: aadhaar_number || "",
-        financial_year: currentFY
+        financial_year: currentFY,
+        applying_for: applying_for || "self",
+        beneficiary_relationship: beneficiary_relationship || (applying_for === "other" ? "Other" : "Self"),
+        beneficiary_name: name || "Applicant"
       });
       application_id = app._id.toString();
+    } else if (app) {
+      if (applying_for) app.applying_for = applying_for;
+      if (beneficiary_relationship) app.beneficiary_relationship = beneficiary_relationship;
+      if (name) {
+        app.beneficiary_name = name;
+        app.name_from_chat = name;
+      }
+      if (mobile) app.mobile_from_chat = mobile;
+      if (aadhaar_number) app.aadhaar_number = aadhaar_number;
     }
 
     if (!app) {
@@ -656,7 +668,7 @@ exports.uploadDocuments = async (req, res) => {
 
         // ── HIGH RISK: Likely fraudulent document → Hard stop ──────────────
         if (authenticityReport.overall_risk === "HIGH" ||
-            authenticityReport.recommendation === "REJECT_LIKELY_FRAUDULENT_DOCUMENT") {
+          authenticityReport.recommendation === "REJECT_LIKELY_FRAUDULENT_DOCUMENT") {
 
           app.status = "rejected";
           app.auto_decision = "rejected";
@@ -722,7 +734,7 @@ exports.uploadDocuments = async (req, res) => {
             annual_income: annualIncome,
             monthly_tds_on_slip: salaryDetails.tds_deduction
           },
-          app.financial_year || `${new Date().getFullYear()-1}-${new Date().getFullYear()}`
+          app.financial_year || `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`
         );
 
         // Save salary truth reports to DB
@@ -794,8 +806,8 @@ exports.uploadDocuments = async (req, res) => {
           const epfoReason = !epfoResult?.epfo_found
             ? "Employee UAN / EPFO record was not found in the EPFO government portal."
             : !epfoResult?.name_verified_in_epfo
-            ? `EPFO member name mismatch: UAN is registered to '${epfoResult?.member_name}' instead of applicant.`
-            : `PF contribution mismatch: Calculated salary from 12% PF (${epfoResult?.epfo_verified_basic}) contradicts claimed salary.`;
+              ? `EPFO member name mismatch: UAN is registered to '${epfoResult?.member_name}' instead of applicant.`
+              : `PF contribution mismatch: Calculated salary from 12% PF (${epfoResult?.epfo_verified_basic}) contradicts claimed salary.`;
           app.officer_note = `${epfoReason} AI auto-approval blocked — sent for manual revenue officer salary verification.`;
           await app.save();
 

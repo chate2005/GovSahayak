@@ -19,6 +19,11 @@ const ApplicationSchema = new mongoose.Schema(
     financial_year: String,
     certificate_url: String,
 
+    // Applying for Self vs Other Beneficiary details
+    applying_for: { type: String, enum: ["self", "other"], default: "self" },
+    beneficiary_relationship: { type: String, default: "Self" },
+    beneficiary_name: String,
+
     // Birth Certificate specific fields
     child_name: String,
     dob: String,

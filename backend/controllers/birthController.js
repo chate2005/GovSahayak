@@ -196,8 +196,38 @@ async function generateBirthCertificate(app) {
 
 exports.uploadDocument = async (req, res) => {
   try {
-    const { application_id } = req.body;
-    let app = await Application.findById(application_id);
+    const { application_id, user_id, applying_for, beneficiary_relationship } = req.body;
+    let app = null;
+    if (application_id) {
+      app = await Application.findById(application_id);
+    }
+
+    if (!app && user_id) {
+      app = await Application.create({
+        user_id,
+        service_type: "birth_certificate",
+        status: "bc_waiting_for_documents",
+        name_from_chat: req.body.child_name || "Applicant",
+        mobile_from_chat: req.body.mobile || "",
+        child_name: req.body.child_name || "",
+        dob: req.body.dob || "",
+        place_of_birth: req.body.place_of_birth || "",
+        father_name: req.body.father_name || "",
+        mother_name: req.body.mother_name || "",
+        bc_mobile: req.body.mobile || "",
+        applying_for: applying_for || "other",
+        beneficiary_relationship: beneficiary_relationship || "Child",
+        beneficiary_name: req.body.child_name || "Child"
+      });
+    } else if (app) {
+      if (applying_for) app.applying_for = applying_for;
+      if (beneficiary_relationship) app.beneficiary_relationship = beneficiary_relationship;
+      if (req.body.child_name) {
+        app.child_name = req.body.child_name;
+        app.beneficiary_name = req.body.child_name;
+      }
+    }
+
     if (!app) return res.status(404).json({ status: "error", message: "Application not found" });
 
     if (!req.files || !req.files.document) {

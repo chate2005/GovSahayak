@@ -189,15 +189,21 @@
       const type = window.govUtils.formatServiceType(app.service_type);
       const badge = window.govUtils.statusBadgeClass(app.status);
       const status = window.govUtils.formatStatus(app.status);
-      const name = app.user?.name || app.dc_full_name || app.child_name || app.name_from_chat || 'Unknown';
+      const beneficiaryName = app.beneficiary_name || app.name_from_chat || app.dc_full_name || app.child_name || app.user?.name || 'Applicant';
+      const registeredName = app.user?.name || 'Portal User';
+      const isOther = app.applying_for === 'other';
+      const relationBadge = isOther
+        ? `<span style="display:inline-block;padding:2px 7px;font-size:10.5px;font-weight:700;border-radius:4px;background:#fef3c7;color:#92400e;margin-left:4px;">For: ${app.beneficiary_relationship || 'Other'}</span>`
+        : `<span style="display:inline-block;padding:2px 7px;font-size:10.5px;font-weight:700;border-radius:4px;background:#e0e7ff;color:#3730a3;margin-left:4px;">Self</span>`;
+
       const conf = app.dc_confidence_score || app.bc_confidence_score || null;
-      const confHtml = conf !== null ? `<span style="font-size:11px;font-weight:700;color:${conf>=95?'#138808':conf>=75?'#d97706':'#dc3545'}">${Math.round(conf)}% confidence</span>` : '';
+      const confHtml = conf !== null ? `<span style="font-size:11px;font-weight:700;color:${conf>=95?'#138808':conf>=75?'#d97706':'#dc3545'}">${Math.round(conf)}% conf</span>` : '';
       const date = window.govUtils.formatDate(app.createdAt);
       return `<div class="app-row" onclick="selectApplication('${app._id}')">
         <div class="app-row-icon">${icon}</div>
         <div class="app-row-info">
-          <div class="app-row-title">${type} — ${name}</div>
-          <div class="app-row-sub">${date} · ${confHtml}</div>
+          <div class="app-row-title">${type} — ${beneficiaryName} ${relationBadge}</div>
+          <div class="app-row-sub">Account: <strong>${registeredName}</strong> · ${date} ${confHtml ? '· ' + confHtml : ''}</div>
         </div>
         <span class="badge ${badge}">${status}</span>
       </div>`;
@@ -218,10 +224,24 @@
   function renderDetail(app) {
     const panel = document.getElementById('detail-panel');
     const type  = window.govUtils.formatServiceType(app.service_type);
-    const name  = app.user?.name || app.dc_full_name || app.child_name || '—';
-    const email = app.user?.email || '—';
-    const phone = app.user?.phone || app.dc_mobile || app.bc_mobile || '—';
-    const status= window.govUtils.formatStatus(app.status);
+
+    // Web Account Details (Registration Info)
+    const accName  = app.user?.name || 'Not Available';
+    const accEmail = app.user?.email || '—';
+    const accPhone = app.user?.phone || '—';
+    const accJoined= app.user?.createdAt ? window.govUtils.formatDate(app.user.createdAt) : '—';
+
+    // Application & Beneficiary Details
+    const isOther = app.applying_for === 'other';
+    const appForLabel = isOther
+      ? `<span class="badge" style="background:#fef3c7;color:#92400e;font-size:12px;padding:4px 10px;font-weight:700;">👥 Other (${app.beneficiary_relationship || 'Other'})</span>`
+      : `<span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:12px;padding:4px 10px;font-weight:700;">👤 Applying for Myself</span>`;
+
+    const beneficiaryName = app.beneficiary_name || app.name_from_chat || app.dc_full_name || app.child_name || accName;
+    const appPhone = app.mobile_from_chat || app.dc_mobile || app.bc_mobile || accPhone;
+    const aadhaarDisplay = app.aadhaar_number || (app.dc_aadhaar_last4 ? `XXXX-XXXX-${app.dc_aadhaar_last4}` : '—');
+    const submittedDate = window.govUtils.formatDate(app.createdAt);
+    const status = window.govUtils.formatStatus(app.status);
     const badge = window.govUtils.statusBadgeClass(app.status);
 
     // Confidence score
@@ -271,35 +291,35 @@
           <div class="ocr-box">${JSON.stringify(ocrData, null, 2)}</div>
         </div>` : '';
 
-    // Domain-specific fields
-    let domainFields = '';
+    // Domain-specific inner fields
+    let domainFieldsInner = '';
     if (app.service_type === 'domicile_certificate') {
       const addr = [app.dc_house_no,app.dc_street,app.dc_city,app.dc_district,app.dc_state,app.dc_pin].filter(Boolean).join(', ');
-      domainFields = `
-        <div class="detail-section"><div class="detail-grid">
-          <div><div class="detail-label">Duration (years)</div><div class="detail-value">${app.dc_duration_years||'—'}</div></div>
+      domainFieldsInner = `
+        <div class="detail-grid">
+          <div><div class="detail-label">Duration of Residence</div><div class="detail-value">${app.dc_duration_years ? app.dc_duration_years + ' years' : '—'}</div></div>
+          <div><div class="detail-label">Date of Birth</div><div class="detail-value">${app.dc_dob||'—'}</div></div>
           <div><div class="detail-label">Purpose</div><div class="detail-value">${app.dc_purpose||'—'}</div></div>
-          <div style="grid-column:span 2"><div class="detail-label">Address</div><div class="detail-value" style="font-size:13px;">${addr||'—'}</div></div>
-          <div><div class="detail-label">Aadhaar Last 4</div><div class="detail-value">XXXX ${app.dc_aadhaar_last4||'—'}</div></div>
-          <div><div class="detail-label">DOB</div><div class="detail-value">${app.dc_dob||'—'}</div></div>
-        </div></div>`;
+          <div><div class="detail-label">State / Jurisdiction</div><div class="detail-value">${app.dc_state||'—'}</div></div>
+          <div style="grid-column:span 2"><div class="detail-label">Permanent Address</div><div class="detail-value" style="font-size:12.5px;">${addr||'—'}</div></div>
+        </div>`;
     } else if (app.service_type === 'birth_certificate') {
-      domainFields = `
-        <div class="detail-section"><div class="detail-grid">
-          <div><div class="detail-label">Child Name</div><div class="detail-value">${app.child_name||'—'}</div></div>
+      domainFieldsInner = `
+        <div class="detail-grid">
+          <div><div class="detail-label">Child Name</div><div class="detail-value" style="font-weight:700;">${app.child_name||'—'}</div></div>
           <div><div class="detail-label">Date of Birth</div><div class="detail-value">${app.dob||'—'}</div></div>
-          <div><div class="detail-label">Father</div><div class="detail-value">${app.father_name||'—'}</div></div>
-          <div><div class="detail-label">Mother</div><div class="detail-value">${app.mother_name||'—'}</div></div>
+          <div><div class="detail-label">Father's Name</div><div class="detail-value">${app.father_name||'—'}</div></div>
+          <div><div class="detail-label">Mother's Name</div><div class="detail-value">${app.mother_name||'—'}</div></div>
           <div><div class="detail-label">Place of Birth</div><div class="detail-value">${app.place_of_birth||'—'}</div></div>
-          <div><div class="detail-label">Parent Detected</div><div class="detail-value">${app.bc_parent_detected||'—'}</div></div>
-        </div></div>`;
+          <div><div class="detail-label">Parent Detected by AI</div><div class="detail-value">${app.bc_parent_detected||'—'}</div></div>
+        </div>`;
     } else if (app.service_type === 'income_certificate') {
-      domainFields = `
-        <div class="detail-section"><div class="detail-grid">
-          <div><div class="detail-label">Annual Income</div><div class="detail-value">${app.extracted_income?'₹'+Number(app.extracted_income).toLocaleString('en-IN'):'—'}</div></div>
+      domainFieldsInner = `
+        <div class="detail-grid">
+          <div><div class="detail-label">Declared Annual Income</div><div class="detail-value">${app.entered_income ? '₹' + Number(app.entered_income).toLocaleString('en-IN') : '—'}</div></div>
+          <div><div class="detail-label">Extracted / Verified Income</div><div class="detail-value" style="color:#138808;font-weight:700;">${app.extracted_income ? '₹' + Number(app.extracted_income).toLocaleString('en-IN') : '—'}</div></div>
           <div><div class="detail-label">Financial Year</div><div class="detail-value">${app.financial_year||'—'}</div></div>
-          <div><div class="detail-label">Aadhaar No.</div><div class="detail-value">${app.aadhaar_number||'—'}</div></div>
-        </div></div>`;
+        </div>`;
     }
 
     panel.innerHTML = `
@@ -311,22 +331,50 @@
         </div>
       </div>
 
-      <!-- Citizen Info -->
-      <div class="detail-section">
-        <div style="font-size:13px;font-weight:700;color:var(--gov-navy);margin-bottom:10px;">👤 Citizen Information</div>
+      <!-- SECTION 1: Registered Web Account Information -->
+      <div class="detail-section" style="border-left:4px solid var(--gov-navy);background:#f8fafc;padding:14px;border-radius:6px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:13.5px;font-weight:700;color:var(--gov-navy);">
+            🌐 Section 1: Registered Portal Account Information
+          </div>
+          <span style="font-size:11px;background:#e2e8f0;color:#334155;padding:2px 8px;border-radius:4px;font-weight:600;">Website Account</span>
+        </div>
         <div class="detail-grid">
-          <div><div class="detail-label">Name</div><div class="detail-value">${name}</div></div>
-          <div><div class="detail-label">Phone</div><div class="detail-value">${phone}</div></div>
-          <div><div class="detail-label">Email</div><div class="detail-value" style="font-size:12.5px;">${email}</div></div>
-          <div><div class="detail-label">Submitted</div><div class="detail-value">${window.govUtils.formatDate(app.createdAt)}</div></div>
+          <div><div class="detail-label">Name (Used on Website)</div><div class="detail-value" style="font-weight:700;color:var(--gov-navy);">${accName}</div></div>
+          <div><div class="detail-label">Phone (Registration)</div><div class="detail-value">${accPhone}</div></div>
+          <div><div class="detail-label">Email (Registration)</div><div class="detail-value" style="font-size:12.5px;">${accEmail}</div></div>
+          <div><div class="detail-label">Account Created</div><div class="detail-value">${accJoined}</div></div>
+        </div>
+      </div>
+
+      <!-- SECTION 2: Certificate Application & Beneficiary Details -->
+      <div class="detail-section" style="border-left:4px solid #f59e0b;background:#fffcf5;padding:14px;border-radius:6px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:13.5px;font-weight:700;color:#92400e;">
+            📋 Section 2: Certificate Application &amp; Beneficiary Details
+          </div>
+          <div>${appForLabel}</div>
+        </div>
+        <div class="detail-grid">
+          <div><div class="detail-label">Beneficiary / Applicant Name</div><div class="detail-value" style="font-weight:700;color:#0f172a;">${beneficiaryName}</div></div>
+          <div><div class="detail-label">Relationship with User</div><div class="detail-value">${app.beneficiary_relationship || (isOther ? 'Other' : 'Self')}</div></div>
+          <div><div class="detail-label">Application Contact Phone</div><div class="detail-value">${appPhone}</div></div>
+          <div><div class="detail-label">Aadhaar No.</div><div class="detail-value" style="font-family:monospace;font-weight:600;">${aadhaarDisplay}</div></div>
+          <div><div class="detail-label">Certificate Type</div><div class="detail-value">${type}</div></div>
+          <div><div class="detail-label">Submitted On</div><div class="detail-value">${submittedDate}</div></div>
+        </div>
+
+        <!-- Service-Specific Details Sub-Block -->
+        <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #fcd34d;">
+          <div style="font-size:11.5px;font-weight:700;color:#b45309;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+            📄 Specific Certificate Parameters
+          </div>
+          ${domainFieldsInner}
         </div>
       </div>
 
       <!-- AI Confidence -->
       ${confHtml ? `<div class="detail-section">${confHtml}<div style="margin-top:8px;"><div class="detail-label">AI Recommendation</div><div style="font-size:15px;font-weight:700;color:${aiDecisionColor};">${autoDecision}</div></div></div>` : ''}
-
-      <!-- Domain Fields -->
-      ${domainFields}
 
       <!-- Flags -->
       ${flagsHtml}

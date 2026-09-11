@@ -336,8 +336,43 @@ async function generateDomicileCertificate(app) {
 
 exports.uploadDocument = async (req, res) => {
   try {
-    const { application_id } = req.body;
-    const app = await Application.findById(application_id);
+    const { application_id, user_id, applying_for, beneficiary_relationship } = req.body;
+    let app = null;
+    if (application_id) {
+      app = await Application.findById(application_id);
+    }
+
+    if (!app && user_id) {
+      app = await Application.create({
+        user_id,
+        service_type: "domicile_certificate",
+        status: "dc_waiting_for_aadhaar",
+        name_from_chat: req.body.dc_full_name || "Applicant",
+        mobile_from_chat: req.body.dc_mobile || "",
+        dc_full_name: req.body.dc_full_name || "",
+        dc_mobile: req.body.dc_mobile || "",
+        dc_dob: req.body.dc_dob || "",
+        dc_house_no: req.body.dc_house_no || "",
+        dc_street: req.body.dc_street || "",
+        dc_city: req.body.dc_city || "",
+        dc_district: req.body.dc_district || "",
+        dc_state: req.body.dc_state || "",
+        dc_pin: req.body.dc_pin || "",
+        dc_duration_years: parseInt(req.body.dc_duration_years) || 0,
+        dc_purpose: req.body.dc_purpose || "",
+        applying_for: applying_for || "self",
+        beneficiary_relationship: beneficiary_relationship || (applying_for === "other" ? "Other" : "Self"),
+        beneficiary_name: req.body.dc_full_name || "Applicant"
+      });
+    } else if (app) {
+      if (applying_for) app.applying_for = applying_for;
+      if (beneficiary_relationship) app.beneficiary_relationship = beneficiary_relationship;
+      if (req.body.dc_full_name) {
+        app.beneficiary_name = req.body.dc_full_name;
+        app.dc_full_name = req.body.dc_full_name;
+      }
+    }
+
     if (!app) return res.status(404).json({ status: "error", message: "Application not found" });
 
     if (!req.files || !req.files.document) {
