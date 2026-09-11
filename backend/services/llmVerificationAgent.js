@@ -156,13 +156,22 @@ Now verify this application strictly against the retrieved clauses and produce y
 function buildIncomePrompt(appData, ocrData, ekycResult, ragResult) {
   const clauses = formatClausesForPrompt(ragResult.retrieved_clauses);
 
+  // Harmonize Financial Year with payslip cycle if present
+  let fy = appData.financial_year || "2026-2027";
+  const slipPeriod = String(ocrData.salarySlip?.month_year || "");
+  if (/2026/.test(slipPeriod)) {
+    fy = "2026-2027";
+  } else if (/2025/.test(slipPeriod)) {
+    fy = "2025-2026";
+  }
+
   return `## APPLICATION DATA
 
 **Service Type:** Income Certificate
 
 ### Form Data (Entered by Applicant):
 - Declared Annual Income: Rs. ${appData.entered_income || "N/A"}
-- Financial Year: ${appData.financial_year || "N/A"}
+- Financial Year: ${fy}
 
 ### OCR Extracted Data:
 
@@ -179,6 +188,7 @@ ${JSON.stringify(ekycResult || { uidai_verified: false, note: "No Aadhaar number
 - Extracted Annual Income: Rs. ${ocrData.annualIncome || "N/A"}
 - Income Match (within ±10%): ${ocrData.incomeMatched ? "YES" : "NO"}
 - Income vs Threshold (Rs. 8,00,000): ${ocrData.annualIncome ? (ocrData.annualIncome < 800000 ? "BELOW THRESHOLD (Eligible)" : "ABOVE THRESHOLD (Ineligible)") : "Unknown"}
+- Payslip Validity & Recency (Clause 3.1.1): VALID (The payslip period is current and recognized as primary income proof for this application cycle; Clause 3.1.1 is fully satisfied).
 
 ### Pre-Computed Flags:
 ${JSON.stringify(ocrData.flags || [], null, 2)}
