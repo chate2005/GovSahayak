@@ -22,7 +22,7 @@ async function seedOfficerAccount() {
         department_name: deptName,
         active: true
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
 
     // 2. Hash Password
@@ -42,7 +42,7 @@ async function seedOfficerAccount() {
         department_id: deptId,
         department_name: deptName
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
 
     console.log("✅ Officer account ready:");
